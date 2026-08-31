@@ -13,11 +13,20 @@ import { DocumentPreview } from '@/components/document-preview';
 type Entry = { name: string; path: string; type: 'directory' | 'file'; size: number; modifiedAt: string; modifiedAtMs: number; extension: string };
 type DirectoryPayload = { location: { path: string; label: string; description?: string; writable: boolean }; entries: Entry[] };
 type SortKey = 'default' | 'name' | 'updated' | 'size';
+type FileFilter = 'all' | 'video' | 'image' | 'audio' | 'document';
 
 const roots = [
   { path: 'files', label: '个人文件', note: '日常资料与下载' },
-  { path: 'media', label: '影音资源', note: '电影、剧集和音乐' },
+  { path: 'media', label: '媒体文件', note: '视频、图片和音频' },
   { path: 'sites', label: '网页发布', note: 'HTML、CSS 和静态站点' },
+];
+
+const fileFilters: { value: FileFilter; label: string; icon: typeof File }[] = [
+  { value: 'all', label: '全部', icon: File },
+  { value: 'video', label: '视频', icon: FileVideo },
+  { value: 'image', label: '图片', icon: FileImage },
+  { value: 'audio', label: '音频', icon: FileAudio },
+  { value: 'document', label: '文档', icon: FileText },
 ];
 
 const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'ico'];
@@ -58,7 +67,10 @@ function visualFor(entry: Entry) {
 export function FileCenter() {
   const search = useSearchParams();
   const initialPath = search.get('path') || '';
+  const incomingFilter = search.get('filter');
+  const initialFilter: FileFilter = incomingFilter === 'video' || incomingFilter === 'image' || incomingFilter === 'audio' || incomingFilter === 'document' ? incomingFilter : 'all';
   const [currentPath, setCurrentPath] = useState(initialPath);
+  const [fileFilter, setFileFilter] = useState<FileFilter | null>(initialPath ? null : initialFilter);
   const [data, setData] = useState<DirectoryPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -77,10 +89,13 @@ export function FileCenter() {
   const [deleteTargets, setDeleteTargets] = useState<string[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  async function load(pathname = currentPath) {
+  async function load(pathname = currentPath, filter = fileFilter) {
     setLoading(true);
     try {
-      const response = await fetch(`/api/files?path=${encodeURIComponent(pathname)}`, { cache: 'no-store' });
+      const parameters = new URLSearchParams();
+      if (!pathname && filter) parameters.set('filter', filter);
+      else parameters.set('path', pathname);
+      const response = await fetch(`/api/files?${parameters}`, { cache: 'no-store' });
       const payload = await response.json() as DirectoryPayload & { error?: string };
       if (!response.ok) throw new Error(payload.error || '目录读取失败');
       setData(payload);
@@ -92,12 +107,27 @@ export function FileCenter() {
     }
   }
 
-  useEffect(() => { void load(currentPath); }, [currentPath]);
+  useEffect(() => { void load(currentPath, fileFilter); }, [currentPath, fileFilter]);
 
   function go(pathname: string) {
-    const target = pathname ? `/files?path=${encodeURIComponent(pathname)}` : '/files';
+    const target = pathname ? `/files?path=${encodeURIComponent(pathname)}` : '/files?filter=all';
     window.history.pushState({}, '', target);
     setCurrentPath(pathname);
+    setFileFilter(pathname ? null : 'all');
+    setQuery('');
+  }
+
+  function filterFiles(filter: FileFilter) {
+    window.history.pushState({}, '', `/files?filter=${filter}`);
+    setCurrentPath('');
+    setFileFilter(filter);
+    setQuery('');
+  }
+
+  function browseFolders() {
+    window.history.pushState({}, '', '/files');
+    setCurrentPath('');
+    setFileFilter(null);
     setQuery('');
   }
 
@@ -209,21 +239,23 @@ export function FileCenter() {
     });
   }, [data?.entries, query, sort]);
   const allSelected = entries.length > 0 && entries.every((entry) => selected.has(entry.path));
+  const activeFilter = fileFilters.find((item) => item.value === fileFilter);
+  const isFiltered = fileFilter !== null;
 
   return <QiyuAppShell active="files" eyebrow="栖屿文件" title="文件中心">
     <div className="space-y-5">
       <section className="flex flex-col gap-4 border-b border-white/7 pb-5 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-sm text-primary">本地文件空间</p><h2 className="mt-1.5 text-3xl font-medium tracking-[-0.045em]">文件，放得清楚。</h2><p className="mt-2 text-sm text-muted-foreground">上传、预览、整理与移动，都在一个地方。</p></div><div className="flex flex-wrap gap-2"><input ref={fileInput} type="file" multiple className="hidden" onChange={(event) => void upload(event.target.files)} /><Button variant="outline" onClick={() => setFolderMode((open) => !open)} className="rounded-lg border-white/8 bg-white/[0.025]" disabled={!currentPath}><FolderPlus className="size-4" />新建文件夹</Button><Button onClick={() => fileInput.current?.click()} className="rounded-lg" disabled={!currentPath}><Upload className="size-4" />上传</Button></div></section>
 
-      <section className="grid gap-2 sm:grid-cols-3">{roots.map((root) => <button key={root.path} onClick={() => go(root.path)} className={`flex items-center gap-3 rounded-xl border p-3.5 text-left transition ${currentPath === root.path || currentPath.startsWith(`${root.path}/`) ? 'border-primary/30 bg-primary/[0.08]' : 'border-white/8 bg-white/[0.025] hover:border-white/15 hover:bg-white/[0.045]'}`}><span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Folder className="size-4" /></span><span className="min-w-0"><span className="block text-sm font-medium">{root.label}</span><span className="mt-0.5 block truncate text-xs text-muted-foreground">{root.note}</span></span></button>)}</section>
+      <section className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.025] p-3.5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-medium text-muted-foreground">从整个空间筛选</p><div className="mt-2 flex flex-wrap gap-1.5">{fileFilters.map((item) => { const Icon = item.icon; const selected = item.value === fileFilter; return <button key={item.value} onClick={() => filterFiles(item.value)} className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition ${selected ? 'border-primary/30 bg-primary/10 text-primary' : 'border-white/8 bg-black/10 text-muted-foreground hover:text-foreground'}`}><Icon className="size-3.5" />{item.label}</button>; })}</div></div><button onClick={browseFolders} className={`w-fit rounded-lg border px-3 py-2 text-xs transition ${isFiltered ? 'border-white/8 bg-black/10 text-muted-foreground hover:text-foreground' : 'border-primary/30 bg-primary/10 text-primary'}`}><Folder className="mr-1.5 inline size-3.5" />按文件夹浏览</button></section>
 
       <section onDragOver={(event) => { event.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop} className={`rounded-2xl border transition ${dragging ? 'border-primary/50 bg-primary/[0.08]' : 'border-white/8 bg-white/[0.025]'}`}>
-        <div className="flex flex-wrap items-center gap-2 border-b border-white/7 px-3 py-2.5 sm:px-5"><button disabled={!currentPath} onClick={() => go(parentPath)} className="rounded-lg p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground disabled:opacity-30" aria-label="上一级"><ArrowLeft className="size-4" /></button><div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-sm"><button onClick={() => go('')} className="shrink-0 text-muted-foreground hover:text-foreground">栖屿空间</button>{breadcrumbs.map((part, index) => { const crumb = breadcrumbs.slice(0, index + 1).join('/'); const label = index === 0 ? roots.find((root) => root.path === part)?.label || part : part; return <span key={crumb} className="flex shrink-0 items-center gap-1"><span className="text-muted-foreground/50">/</span><button onClick={() => go(crumb)} className={index === breadcrumbs.length - 1 ? 'font-medium' : 'text-muted-foreground hover:text-foreground'}>{label}</button></span>; })}</div><div className="relative w-full sm:w-52"><Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} className="h-8 border-white/8 bg-black/10 pl-8 text-xs" placeholder="在当前目录搜索" /></div><button onClick={() => setView((current) => current === 'grid' ? 'list' : 'grid')} className="rounded-lg p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground" aria-label="切换视图">{view === 'grid' ? <LayoutList className="size-4" /> : <Grid2X2 className="size-4" />}</button></div>
+        <div className="flex flex-wrap items-center gap-2 border-b border-white/7 px-3 py-2.5 sm:px-5"><button disabled={!currentPath} onClick={() => go(parentPath)} className="rounded-lg p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground disabled:opacity-30" aria-label="上一级"><ArrowLeft className="size-4" /></button><div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-sm">{isFiltered ? <span className="flex items-center gap-2 font-medium"><span className="text-muted-foreground">已筛选</span>{activeFilter?.label || '文件'}</span> : <><button onClick={() => go('')} className="shrink-0 text-muted-foreground hover:text-foreground">栖屿空间</button>{breadcrumbs.map((part, index) => { const crumb = breadcrumbs.slice(0, index + 1).join('/'); const label = index === 0 ? roots.find((root) => root.path === part)?.label || part : part; return <span key={crumb} className="flex shrink-0 items-center gap-1"><span className="text-muted-foreground/50">/</span><button onClick={() => go(crumb)} className={index === breadcrumbs.length - 1 ? 'font-medium' : 'text-muted-foreground hover:text-foreground'}>{label}</button></span>; })}</>}</div><div className="relative w-full sm:w-52"><Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} className="h-8 border-white/8 bg-black/10 pl-8 text-xs" placeholder={isFiltered ? '在筛选结果中搜索' : '在当前目录搜索'} /></div><button onClick={() => setView((current) => current === 'grid' ? 'list' : 'grid')} className="rounded-lg p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground" aria-label="切换视图">{view === 'grid' ? <LayoutList className="size-4" /> : <Grid2X2 className="size-4" />}</button></div>
 
         {folderMode ? <form onSubmit={createFolder} className="flex items-center gap-2 border-b border-white/7 bg-primary/[0.035] px-4 py-3 sm:px-5"><FolderPlus className="size-4 text-primary" /><Input value={folderName} onChange={(event) => setFolderName(event.target.value)} autoFocus placeholder="新文件夹名称" className="h-8 border-white/8 bg-black/10 text-sm" /><Button size="sm" type="submit" className="rounded-lg">创建</Button><button type="button" onClick={() => setFolderMode(false)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-white/5"><X className="size-4" /></button></form> : null}
         {message ? <div className="flex items-center justify-between border-b border-white/7 bg-white/[0.02] px-4 py-2.5 text-xs text-muted-foreground sm:px-5"><span>{message}</span><button onClick={() => setMessage('')} className="rounded p-1 hover:bg-white/5" aria-label="关闭提示"><X className="size-3" /></button></div> : null}
         {selected.size ? <div className="flex flex-wrap items-center gap-2 border-b border-primary/15 bg-primary/[0.055] px-4 py-2.5 text-xs sm:px-5"><span className="mr-1 text-primary">已选择 {selected.size} 项</span><Button size="sm" variant="outline" onClick={() => { setDestination(currentPath.split('/')[0] || 'files'); setMoveOpen(true); }} className="h-7 rounded-md border-primary/20 bg-transparent"><MoveRight className="size-3.5" />移动</Button><Button size="sm" variant="ghost" onClick={() => openDelete(Array.from(selected))} className="h-7 rounded-md text-red-200 hover:bg-red-300/10 hover:text-red-100"><Trash2 className="size-3.5" />删除</Button><button onClick={() => setSelected(new Set())} className="ml-auto text-muted-foreground hover:text-foreground">取消选择</button></div> : null}
 
-        <div className="min-h-[390px] p-3 sm:p-5">{loading ? <div className="flex min-h-[330px] items-center justify-center gap-3 text-sm text-muted-foreground"><LoaderCircle className="size-5 animate-spin text-primary" />正在读取目录</div> : !entries.length ? <EmptyState path={currentPath} filtered={Boolean(query)} onUpload={() => fileInput.current?.click()} /> : view === 'grid' ? <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{entries.map((entry) => <FileCard key={entry.path} entry={entry} selected={selected.has(entry.path)} onToggle={toggle} onOpen={() => entry.type === 'directory' ? go(entry.path) : setPreview(entry)} onRename={() => openRename(entry)} onDelete={() => openDelete([entry.path])} />)}</div> : <div><div className="grid grid-cols-[36px_minmax(0,1fr)_44px] items-center border-b border-white/7 px-2 pb-2 text-[11px] text-muted-foreground sm:grid-cols-[36px_minmax(240px,1fr)_130px_110px_44px]"><Checkbox checked={allSelected} onCheckedChange={(checked) => setSelected(checked ? new Set(entries.map((entry) => entry.path)) : new Set())} /><span>名称</span><button onClick={() => setSort((current) => current === 'updated' ? 'default' : 'updated')} className="hidden items-center gap-1 text-left hover:text-foreground sm:flex">修改时间 <ArrowUpDown className="size-3" /></button><button onClick={() => setSort((current) => current === 'size' ? 'default' : 'size')} className="hidden items-center gap-1 text-left hover:text-foreground sm:flex">大小 <ArrowUpDown className="size-3" /></button></div>{entries.map((entry) => <FileRow key={entry.path} entry={entry} selected={selected.has(entry.path)} onToggle={toggle} onOpen={() => entry.type === 'directory' ? go(entry.path) : setPreview(entry)} onRename={() => openRename(entry)} onDelete={() => openDelete([entry.path])} />)}</div>}</div>
+        <div className="min-h-[390px] p-3 sm:p-5">{loading ? <div className="flex min-h-[330px] items-center justify-center gap-3 text-sm text-muted-foreground"><LoaderCircle className="size-5 animate-spin text-primary" />正在读取文件</div> : !entries.length ? <EmptyState path={currentPath} filtered={Boolean(query)} isFiltered={isFiltered} onUpload={() => fileInput.current?.click()} /> : view === 'grid' ? <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{entries.map((entry) => <FileCard key={entry.path} entry={entry} selected={selected.has(entry.path)} onToggle={toggle} onOpen={() => entry.type === 'directory' ? go(entry.path) : setPreview(entry)} onRename={() => openRename(entry)} onDelete={() => openDelete([entry.path])} />)}</div> : <div><div className="grid grid-cols-[36px_minmax(0,1fr)_44px] items-center border-b border-white/7 px-2 pb-2 text-[11px] text-muted-foreground sm:grid-cols-[36px_minmax(240px,1fr)_130px_110px_44px]"><Checkbox checked={allSelected} onCheckedChange={(checked) => setSelected(checked ? new Set(entries.map((entry) => entry.path)) : new Set())} /><span>名称</span><button onClick={() => setSort((current) => current === 'updated' ? 'default' : 'updated')} className="hidden items-center gap-1 text-left hover:text-foreground sm:flex">修改时间 <ArrowUpDown className="size-3" /></button><button onClick={() => setSort((current) => current === 'size' ? 'default' : 'size')} className="hidden items-center gap-1 text-left hover:text-foreground sm:flex">大小 <ArrowUpDown className="size-3" /></button></div>{entries.map((entry) => <FileRow key={entry.path} entry={entry} selected={selected.has(entry.path)} onToggle={toggle} onOpen={() => entry.type === 'directory' ? go(entry.path) : setPreview(entry)} onRename={() => openRename(entry)} onDelete={() => openDelete([entry.path])} />)}</div>}</div>
       </section>
     </div>
     <PreviewDialog entry={preview} onClose={() => setPreview(null)} />
@@ -233,8 +265,8 @@ export function FileCenter() {
   </QiyuAppShell>;
 }
 
-function EmptyState({ path, filtered, onUpload }: { path: string; filtered: boolean; onUpload: () => void }) {
-  return <div className="flex min-h-[330px] flex-col items-center justify-center rounded-xl border border-dashed border-white/10 text-center"><Folder className="size-7 text-muted-foreground" /><p className="mt-4 text-sm font-medium">{filtered ? '没有匹配的文件' : path ? '这个文件夹还是空的' : '选择一个空间开始管理'}</p><p className="mt-1.5 max-w-xs text-xs leading-5 text-muted-foreground">{filtered ? '换个关键词试试。' : path ? '可直接拖入文件，或使用上传按钮。' : '个人文件、影音资源和网页发布各自独立。'}</p>{path && !filtered ? <Button onClick={onUpload} variant="outline" className="mt-5 rounded-lg border-white/10 bg-white/[0.02]"><Upload className="size-4" />上传文件</Button> : null}</div>;
+function EmptyState({ path, filtered, isFiltered, onUpload }: { path: string; filtered: boolean; isFiltered: boolean; onUpload: () => void }) {
+  return <div className="flex min-h-[330px] flex-col items-center justify-center rounded-xl border border-dashed border-white/10 text-center"><Folder className="size-7 text-muted-foreground" /><p className="mt-4 text-sm font-medium">{filtered ? '没有匹配的文件' : isFiltered ? '还没有找到这类文件' : path ? '这个文件夹还是空的' : '选择一个文件夹开始管理'}</p><p className="mt-1.5 max-w-xs text-xs leading-5 text-muted-foreground">{filtered ? '换个关键词试试。' : isFiltered ? '文件会按类型从整个个人空间统一显示。' : path ? '可直接拖入文件，或使用上传按钮。' : '也可以切换到视频、图片、音频或文档筛选。'}</p>{path && !filtered ? <Button onClick={onUpload} variant="outline" className="mt-5 rounded-lg border-white/10 bg-white/[0.02]"><Upload className="size-4" />上传文件</Button> : null}</div>;
 }
 
 function EntryMenu({ downloadHref, onRename, onDelete }: { downloadHref?: string; onRename: () => void; onDelete: () => void }) {

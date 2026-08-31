@@ -6,9 +6,17 @@ export const storageRoot = path.resolve(/* turbopackIgnore: true */ process.env.
 
 const rootFolders = [
   { name: 'files', label: '个人文件', description: '上传、整理与下载' },
-  { name: 'media', label: '影音资源', description: 'Jellyfin 会扫描这里的影片和剧集' },
+  { name: 'media', label: '媒体文件', description: '视频、图片与音频会统一收在这里' },
   { name: 'sites', label: '网页发布', description: '静态网页会发布到 /sites/' },
 ] as const;
+
+export const storageFilters = ['all', 'video', 'image', 'audio', 'document'] as const;
+export type StorageFilter = (typeof storageFilters)[number];
+
+const videoExtensions = new Set(['3gp', 'avi', 'flv', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 'ogv', 'ts', 'webm', 'wmv']);
+const imageExtensions = new Set(['avif', 'bmp', 'gif', 'heic', 'ico', 'jpeg', 'jpg', 'png', 'svg', 'tif', 'tiff', 'webp']);
+const audioExtensions = new Set(['aac', 'aiff', 'alac', 'flac', 'm4a', 'mp3', 'ogg', 'opus', 'wav', 'wma']);
+const MAX_FILTER_RESULTS = 5_000;
 
 export type StorageEntry = {
   name: string;
@@ -143,6 +151,56 @@ export async function listDirectory(input = ''): Promise<{ location: StorageLoca
       label: input.split('/').at(-1) || root?.label || '文件',
       description: input.split('/').length === 1 ? root?.description : undefined,
       writable: true,
+    },
+    entries,
+  };
+}
+
+function matchesFilter(entry: StorageEntry, filter: StorageFilter) {
+  if (filter === 'all') return true;
+  if (filter === 'video') return videoExtensions.has(entry.extension);
+  if (filter === 'image') return imageExtensions.has(entry.extension);
+  if (filter === 'audio') return audioExtensions.has(entry.extension);
+  return !videoExtensions.has(entry.extension) && !imageExtensions.has(entry.extension) && !audioExtensions.has(entry.extension);
+}
+
+async function walkFiles(parent: string, filter: StorageFilter, entries: StorageEntry[]): Promise<void> {
+  if (entries.length >= MAX_FILTER_RESULTS) return;
+  const directory = await assertSafePath(parent);
+  const children = await readdir(directory, { withFileTypes: true });
+  for (const child of children) {
+    if (entries.length >= MAX_FILTER_RESULTS || child.name.startsWith('.')) break;
+    const entry = await toEntry(parent, child.name);
+    if (!entry) continue;
+    if (entry.type === 'directory') {
+      await walkFiles(entry.path, filter, entries);
+    } else if (matchesFilter(entry, filter)) {
+      entries.push(entry);
+    }
+  }
+}
+
+export async function listFilesByFilter(filter: StorageFilter) {
+  if (!storageFilters.includes(filter)) throw new StorageError('筛选类型无效');
+  const entries: StorageEntry[] = [];
+  // Websites are managed in their own center. The file view groups the two
+  // personal data spaces, no matter where a file is physically stored.
+  await walkFiles('files', filter, entries);
+  await walkFiles('media', filter, entries);
+  entries.sort((left, right) => right.modifiedAtMs - left.modifiedAtMs);
+  const labels: Record<StorageFilter, string> = {
+    all: '所有文件',
+    video: '视频',
+    image: '图片',
+    audio: '音频',
+    document: '文档与其他文件',
+  };
+  return {
+    location: {
+      path: '',
+      label: labels[filter],
+      description: entries.length >= MAX_FILTER_RESULTS ? `最多显示最新 ${MAX_FILTER_RESULTS} 项` : '从个人文件与媒体空间统一筛选',
+      writable: false,
     },
     entries,
   };

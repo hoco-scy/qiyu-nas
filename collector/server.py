@@ -33,6 +33,10 @@ except ValueError:
     MAX_VIDEO_HEIGHT = 1440
 MAX_HISTORY = 40
 DESTINATIONS = {
+    "videos": STORAGE_ROOT / "media" / "Videos",
+    "audio": STORAGE_ROOT / "media" / "Audio",
+    # Retain these locations for historical task records. New jobs no longer
+    # ask people to decide whether a download is a film or a television show.
     "movies": STORAGE_ROOT / "media" / "Movies",
     "shows": STORAGE_ROOT / "media" / "Shows",
     "inbox": STORAGE_ROOT / "media" / "Inbox",
@@ -119,7 +123,9 @@ def create_job(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("请确认你拥有保存该公开内容的权利")
     source = public_url(payload.get("url"))
     mode = selection(payload.get("mode", "video"), {"video": Path(), "audio": Path()}, "采集类型")
-    destination = selection(payload.get("destination", "inbox"), DESTINATIONS, "保存位置")
+    # The file type, not an assumed movie/series classification, decides the
+    # physical destination. Ignore any legacy client value sent by an older UI.
+    destination = "audio" if mode == "audio" else "videos"
     record = {
         "id": uuid.uuid4().hex,
         "url": source,
@@ -298,7 +304,7 @@ class CollectorHandler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
-    for destination in DESTINATIONS.values():
+    for destination in (DESTINATIONS["videos"], DESTINATIONS["audio"]):
         destination.mkdir(parents=True, exist_ok=True)
     load_jobs()
     threading.Thread(target=worker, daemon=True).start()

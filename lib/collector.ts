@@ -1,5 +1,7 @@
 export type CollectorMode = 'video' | 'audio';
-export type CollectorDestination = 'movies' | 'shows' | 'inbox';
+// `movies`, `shows`, and `inbox` remain readable so completed jobs created by
+// older versions keep their labels. New jobs use the content-type folders.
+export type CollectorDestination = 'videos' | 'audio' | 'movies' | 'shows' | 'inbox';
 export type CollectorStatus = 'queued' | 'running' | 'completed' | 'failed' | 'interrupted';
 
 export type CollectorJob = {

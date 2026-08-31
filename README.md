@@ -56,18 +56,19 @@ docker compose --env-file .env up -d --build
 
 ### 首次配置 Jellyfin
 
-首次打开“影音”页时，门户会使用 `.env` 中的账号自动完成 Jellyfin 的首个管理员账户初始化，并建立默认的影片库 `/media/Movies` 与剧集库 `/media/Shows`，因此不需要第二次登录。随后打开 `http://<主机地址>:8080/jellyfin/` 仅用于高级维护。
+首次打开“影音”页时，门户会使用 `.env` 中的账号自动完成 Jellyfin 的首个管理员账户初始化，并建立默认的视频库 `/media/Videos`，因此不需要第二次登录。随后打开 `http://<主机地址>:8080/jellyfin/` 仅用于高级维护。
 
-将电影放入 `/media/Movies`，剧集放入 `/media/Shows` 即可。不要在 Jellyfin 网络设置中设置 Base URL；Caddy 会负责 `/jellyfin/` 的反向代理。
+将视频放入 `/media/Videos` 即可；不需要先按电影或剧集分类。不要在 Jellyfin 网络设置中设置 Base URL；Caddy 会负责 `/jellyfin/` 的反向代理。
 
-将媒体放入 `data/media/Movies` 或 `data/media/Shows`。Jellyfin 扫描完成后，会出现在栖屿的“影音”页面。
+将视频放入 `data/media/Videos`，音频会收在 `data/media/Audio`。文件中心可以统一按视频、图片、音频或文档筛选；Jellyfin 扫描完成后，视频会出现在栖屿的“影音”页面。
 
 ## 影音采集
 
-在“采集”页粘贴一个你有权保存的**公开** HTTP/HTTPS 媒体链接，选择视频（默认最高 2K / 1440p）或 MP3 音频，再选择保存到：
+在“采集”页粘贴一个你有权保存的**公开** HTTP/HTTPS 媒体链接，选择视频（默认最高 2K / 1440p）或 MP3 音频：
 
-- `media/Inbox`：默认收集箱，适合先在文件中心检查、整理。
-- `media/Movies` / `media/Shows`：Jellyfin 会继续扫描；内容识别取决于文件命名和 Jellyfin 元数据匹配。
+- 视频自动保存到 `media/Videos`，Jellyfin 会继续扫描。
+- 音频自动保存到 `media/Audio`。
+- 旧版本留下的 `Inbox`、`Movies` 与 `Shows` 目录会保留，不会被删除。
 
 采集服务是仅在 Docker 网络内监听的单工作线程，不会开放端口给 Tailscale 或局域网，也不会使用浏览器 Cookie、账号或密码。它拒绝本机、局域网和保留地址，以免被链接利用来访问 NAS 内网。任务历史保存在 `CONFIG_ROOT/collector/jobs.json`，下载内容保存在 `NAS_ROOT/media/`。
 

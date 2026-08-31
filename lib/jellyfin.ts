@@ -99,8 +99,7 @@ async function createDefaultLibraries(activeSession: JellyfinSession) {
   const existing = await existingResponse.json() as JellyfinVirtualFolder[];
   const existingNames = new Set(existing.map((folder) => folder.Name?.toLocaleLowerCase()).filter(Boolean));
   const defaults = [
-    { name: 'Movies', type: 'movies', path: '/media/Movies' },
-    { name: 'Shows', type: 'tvshows', path: '/media/Shows' },
+    { name: 'Videos', type: 'mixed', path: '/media/Videos' },
   ];
 
   await Promise.all(defaults
@@ -133,7 +132,7 @@ async function authenticate() {
   const payload = await response.json() as { AccessToken?: string; User?: { Id?: string } };
   if (!payload.AccessToken || !payload.User?.Id) throw new Error('Jellyfin returned an invalid session');
   session = { accessToken: payload.AccessToken, userId: payload.User.Id, expiresAt: Date.now() + 45 * 60 * 1000 };
-  if (wasBootstrapped) await createDefaultLibraries(session);
+  await createDefaultLibraries(session);
   return session;
 }
 
@@ -219,7 +218,7 @@ export async function mediaItems(parentId?: string, limit = 48): Promise<MediaIt
   const userId = await jellyfinUserId();
   const query = new URLSearchParams({
     Recursive: 'true',
-    IncludeItemTypes: 'Movie,Series,Episode',
+    IncludeItemTypes: 'Movie,Series,Episode,Video',
     Fields: 'Overview,ProductionYear,PremiereDate,RunTimeTicks,PrimaryImageAspectRatio,UserData,BackdropImageTags',
     SortBy: 'DateCreated,SortName',
     SortOrder: 'Descending',

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createDirectory, deleteEntry, listDirectory, moveEntries, renameEntry, StorageError } from '@/lib/storage';
+import { createDirectory, deleteEntry, listDirectory, listFilesByFilter, moveEntries, renameEntry, StorageError, storageFilters, type StorageFilter } from '@/lib/storage';
 import { isPortalAuthenticated } from '@/lib/auth';
 
 export const runtime = 'nodejs';
@@ -16,7 +16,13 @@ function failure(error: unknown) {
 export async function GET(request: Request) {
   if (!await isPortalAuthenticated()) return NextResponse.json({ error: '未登录' }, { status: 401 });
   try {
-    const pathname = new URL(request.url).searchParams.get('path') || '';
+    const query = new URL(request.url).searchParams;
+    const pathname = query.get('path') || '';
+    const filter = query.get('filter');
+    if (filter) {
+      if (pathname || !storageFilters.includes(filter as StorageFilter)) return NextResponse.json({ error: '筛选参数无效' }, { status: 400 });
+      return NextResponse.json(await listFilesByFilter(filter as StorageFilter));
+    }
     return NextResponse.json(await listDirectory(pathname));
   } catch (error) {
     return failure(error);

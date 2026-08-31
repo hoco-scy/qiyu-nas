@@ -7,9 +7,8 @@ config_root="${CONFIG_ROOT:-$project_dir/config}"
 
 mkdir -p \
   "$nas_root/files" \
-  "$nas_root/media/Inbox" \
-  "$nas_root/media/Movies" \
-  "$nas_root/media/Shows" \
+  "$nas_root/media/Videos" \
+  "$nas_root/media/Audio" \
   "$nas_root/sites/home" \
   "$config_root/caddy/data" \
   "$config_root/caddy/config" \
