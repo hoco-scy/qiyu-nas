@@ -1,15 +1,16 @@
 'use client';
 
-import { CircleUserRound, FileCode2, Film, FolderOpen, HardDrive, Home, LogOut, Menu, X } from 'lucide-react';
+import { CircleUserRound, Download, FileCode2, Film, FolderOpen, HardDrive, Home, LogOut, Menu, X } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 
-type ActiveSection = 'home' | 'files' | 'media' | 'sites';
+type ActiveSection = 'home' | 'files' | 'media' | 'collect' | 'sites';
 
 const navigation: { label: string; href: string; icon: typeof Home; active?: ActiveSection }[] = [
   { label: '总览', href: '/', icon: Home, active: 'home' },
   { label: '文件', href: '/files', icon: FolderOpen, active: 'files' },
   { label: '影音', href: '/media', icon: Film, active: 'media' },
+  { label: '采集', href: '/collect', icon: Download, active: 'collect' },
   { label: '网页', href: '/websites', icon: FileCode2, active: 'sites' },
 ];
 

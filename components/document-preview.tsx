@@ -29,6 +29,16 @@ export function DocumentPreview({ entry, url }: { entry: DocumentEntry; url: str
   useEffect(() => {
     let cancelled = false;
 
+    if (entry.size === 0) {
+      void Promise.resolve().then(() => {
+        if (!cancelled) {
+          setLoading(false);
+          setError(`这个 ${entry.extension.toUpperCase()} 文件为空（0 B），可能上传未完成。请重新上传或下载原文件检查。`);
+        }
+      });
+      return () => { cancelled = true; };
+    }
+
     const maxPreviewBytes = isTextPreview(entry.extension) ? maxTextPreviewBytes : maxOfficePreviewBytes;
     if (entry.size > maxPreviewBytes) {
       void Promise.resolve().then(() => {
@@ -51,7 +61,7 @@ export function DocumentPreview({ entry, url }: { entry: DocumentEntry; url: str
           : await parseOfficeDocument(entry.extension, await response.arrayBuffer());
         if (!cancelled) setPreview(nextPreview);
       } catch (reason) {
-        if (!cancelled) setError(reason instanceof Error ? reason.message : '无法解析这个文档');
+        if (!cancelled) setError(documentErrorMessage(entry.extension, reason));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -67,6 +77,14 @@ export function DocumentPreview({ entry, url }: { entry: DocumentEntry; url: str
   if (preview.kind === 'word') return <WordPreview html={preview.html} warnings={preview.warnings} />;
   if (preview.kind === 'text') return <TextPreview source={preview.source} label={preview.label} />;
   return <MarkdownPreview source={preview.source} />;
+}
+
+function documentErrorMessage(extension: string, reason: unknown) {
+  const detail = reason instanceof Error ? reason.message : '';
+  if (extension === 'xlsx' && /corrupted zip|end of data|invalid zip|zip/i.test(detail)) {
+    return '这个 Excel 文件无法解析，可能已损坏或上传不完整。请重新上传，或下载原文件后用 Office、WPS 检查。';
+  }
+  return detail || '无法解析这个文档';
 }
 
 async function parseOfficeDocument(extension: string, buffer: ArrayBuffer): Promise<Preview> {

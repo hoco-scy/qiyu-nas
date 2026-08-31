@@ -31,6 +31,7 @@ function canPreviewExtension(extension: string) {
 }
 
 function formatBytes(value: number) {
+  if (value === 0) return '0 B';
   if (!value) return '—';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   const index = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
