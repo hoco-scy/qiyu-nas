@@ -94,7 +94,7 @@ data/sites/my-tool/index.html
 | `PORTAL_BIND_ADDRESS` / `PORTAL_PORT` | 对外监听地址与端口；可绑定到某个 Tailscale 地址。 |
 | `PORTAL_COOKIE_SECURE` | 使用 HTTPS 入口时设为 `true`。 |
 | `NPM_REGISTRY` | 构建门户镜像时使用的 npm registry；默认官方源。 |
-| `COLLECTOR_MAX_FILESIZE` | 单个采集任务可写入的最大文件大小，默认 `5G`。 |
+| `COLLECTOR_MAX_FILESIZE` | 单个采集任务可写入的最大文件大小，默认 `10G`。 |
 | `COLLECTOR_MAX_HEIGHT` | 视频采集高度上限，默认 `1440`（2K/QHD）；允许 `144` 到 `2160`。 |
 
 项目默认直接以 HTTP 监听，适用于受信任的局域网或受访问控制的私有网络。若经公网、反向代理域名或不受信任网络访问，请为 Caddy 配置 HTTPS，并将 `PORTAL_COOKIE_SECURE=true`。

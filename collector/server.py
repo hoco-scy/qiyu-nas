@@ -26,7 +26,7 @@ from typing import Any
 STORAGE_ROOT = Path(os.environ.get("STORAGE_ROOT", "/storage"))
 CONFIG_ROOT = Path(os.environ.get("CONFIG_ROOT", "/config"))
 STATE_PATH = CONFIG_ROOT / "jobs.json"
-MAX_FILESIZE = os.environ.get("COLLECTOR_MAX_FILESIZE", "5G")
+MAX_FILESIZE = os.environ.get("COLLECTOR_MAX_FILESIZE", "10G")
 try:
     MAX_VIDEO_HEIGHT = min(2160, max(144, int(os.environ.get("COLLECTOR_MAX_HEIGHT", "1440"))))
 except ValueError:
