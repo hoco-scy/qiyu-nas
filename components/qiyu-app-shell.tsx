@@ -2,6 +2,7 @@
 
 import { CircleUserRound, FileCode2, Film, FolderOpen, HardDrive, Home, LogOut, Menu, X } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
+import { ThemeSwitcher } from '@/components/theme-switcher';
 
 type ActiveSection = 'home' | 'files' | 'media' | 'sites';
 
@@ -36,14 +37,14 @@ export function QiyuAppShell({ active, eyebrow, title, children }: { active: Act
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[224px] flex-col border-r border-white/7 bg-[#0c1515] px-3 py-4 lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[224px] flex-col border-r border-sidebar-border bg-sidebar px-3 py-4 lg:flex">
         <Brand />
         {nav}
         <div className="mt-auto rounded-xl border border-white/7 bg-white/[0.025] p-3.5 text-xs leading-5 text-muted-foreground"><span className="mb-1.5 flex items-center gap-2 text-primary"><span className="size-1.5 rounded-full bg-primary" />私人网络</span>仅通过家庭内网与 Tailscale 访问。</div>
       </aside>
-      {open ? <div className="fixed inset-0 z-50 lg:hidden"><button onClick={() => setOpen(false)} className="absolute inset-0 bg-black/55 backdrop-blur-sm" aria-label="关闭菜单遮罩" /><aside className="relative flex h-full w-[276px] flex-col border-r border-white/10 bg-[#0c1515] p-4"><div className="flex items-center justify-between"><Brand /><button onClick={() => setOpen(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-white/5" aria-label="关闭菜单"><X className="size-5" /></button></div>{nav}</aside></div> : null}
+      {open ? <div className="fixed inset-0 z-50 lg:hidden"><button onClick={() => setOpen(false)} className="absolute inset-0 bg-black/55 backdrop-blur-sm" aria-label="关闭菜单遮罩" /><aside className="relative flex h-full w-[276px] flex-col border-r border-sidebar-border bg-sidebar p-4"><div className="flex items-center justify-between"><Brand /><button onClick={() => setOpen(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label="关闭菜单"><X className="size-5" /></button></div>{nav}</aside></div> : null}
       <div className="lg:pl-[224px]">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-white/7 bg-background/90 px-4 backdrop-blur-xl sm:px-7 lg:px-9"><button onClick={() => setOpen(true)} aria-label="打开菜单" className="rounded-lg border border-white/8 bg-white/[0.025] p-2.5 lg:hidden"><Menu className="size-5" /></button><div><p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">{eyebrow}</p><h1 className="mt-0.5 text-base font-medium tracking-[-0.01em]">{title}</h1></div><div className="ml-auto flex items-center gap-1.5"><div className="flex items-center gap-2 rounded-lg border border-white/7 bg-white/[0.025] px-2 py-1.5 pr-2.5"><div className="flex size-7 items-center justify-center rounded-md bg-primary/12 text-primary"><CircleUserRound className="size-3.5" /></div><div className="hidden sm:block"><p className="text-xs font-medium">{username || '栖屿用户'}</p></div></div><button onClick={() => void logout()} className="rounded-lg border border-white/7 bg-white/[0.025] p-2 text-muted-foreground transition hover:border-white/15 hover:bg-white/[0.06] hover:text-foreground" title="退出登录" aria-label="退出登录"><LogOut className="size-4" /></button></div></header>
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/90 px-4 backdrop-blur-xl sm:px-7 lg:px-9"><button onClick={() => setOpen(true)} aria-label="打开菜单" className="rounded-lg border border-border bg-card/65 p-2.5 lg:hidden"><Menu className="size-5" /></button><div><p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">{eyebrow}</p><h1 className="mt-0.5 text-base font-medium tracking-[-0.01em]">{title}</h1></div><div className="ml-auto flex items-center gap-1.5"><ThemeSwitcher /><div className="flex items-center gap-2 rounded-lg border border-border bg-card/65 px-2 py-1.5 pr-2.5"><div className="flex size-7 items-center justify-center rounded-md bg-primary/12 text-primary"><CircleUserRound className="size-3.5" /></div><div className="hidden sm:block"><p className="text-xs font-medium">{username || '栖屿用户'}</p></div></div><button onClick={() => void logout()} className="rounded-lg border border-border bg-card/65 p-2 text-muted-foreground transition hover:border-primary/25 hover:bg-muted hover:text-foreground" title="退出登录" aria-label="退出登录"><LogOut className="size-4" /></button></div></header>
         <div className="mx-auto max-w-[1440px] p-4 sm:p-7 lg:p-9">{children}</div>
       </div>
     </main>

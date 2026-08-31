@@ -18,9 +18,12 @@ export const metadata: Metadata = {
   },
 };
 
+const themeBootScript = `(() => { try { const theme = localStorage.getItem('qiyu-theme'); if (theme === 'forest' || theme === 'cloud' || theme === 'dawn') { document.documentElement.dataset.theme = theme; document.documentElement.classList.toggle('dark', theme === 'forest'); } } catch {} })();`;
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" className="dark" data-theme="forest" suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: themeBootScript }} /></head>
       <body className="antialiased">{children}</body>
     </html>
   );

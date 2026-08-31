@@ -122,6 +122,141 @@ body {
   --sidebar-ring: oklch(0.79 0.104 169);
 }
 
+/* Theme palettes. Forest preserves the original dark appearance; Cloud and
+   Dawn deliberately use high-value backgrounds for a lighter NAS workspace. */
+html[data-theme='cloud'] {
+  color-scheme: light;
+  --background: oklch(0.972 0.012 235);
+  --foreground: oklch(0.26 0.027 245);
+  --card: oklch(0.995 0.004 235);
+  --card-foreground: oklch(0.26 0.027 245);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.26 0.027 245);
+  --primary: oklch(0.58 0.168 248);
+  --primary-foreground: oklch(0.99 0.004 245);
+  --secondary: oklch(0.92 0.026 235);
+  --secondary-foreground: oklch(0.29 0.04 245);
+  --muted: oklch(0.94 0.015 235);
+  --muted-foreground: oklch(0.5 0.035 242);
+  --accent: oklch(0.91 0.041 225);
+  --accent-foreground: oklch(0.27 0.048 245);
+  --border: oklch(0.79 0.028 235 / 72%);
+  --input: oklch(0.79 0.028 235 / 72%);
+  --ring: oklch(0.58 0.168 248);
+  --sidebar: oklch(0.94 0.025 235);
+  --sidebar-foreground: oklch(0.25 0.031 245);
+  --sidebar-primary: oklch(0.58 0.168 248);
+  --sidebar-primary-foreground: oklch(0.99 0.004 245);
+  --sidebar-accent: oklch(0.9 0.043 225);
+  --sidebar-accent-foreground: oklch(0.26 0.027 245);
+  --sidebar-border: oklch(0.79 0.028 235 / 72%);
+  --sidebar-ring: oklch(0.58 0.168 248);
+}
+
+html[data-theme='dawn'] {
+  color-scheme: light;
+  --background: oklch(0.976 0.016 82);
+  --foreground: oklch(0.29 0.035 49);
+  --card: oklch(0.997 0.005 82);
+  --card-foreground: oklch(0.29 0.035 49);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.29 0.035 49);
+  --primary: oklch(0.63 0.174 40);
+  --primary-foreground: oklch(0.995 0.006 75);
+  --secondary: oklch(0.94 0.026 79);
+  --secondary-foreground: oklch(0.33 0.052 43);
+  --muted: oklch(0.95 0.017 80);
+  --muted-foreground: oklch(0.52 0.041 52);
+  --accent: oklch(0.92 0.053 54);
+  --accent-foreground: oklch(0.34 0.065 38);
+  --border: oklch(0.8 0.032 72 / 72%);
+  --input: oklch(0.8 0.032 72 / 72%);
+  --ring: oklch(0.63 0.174 40);
+  --sidebar: oklch(0.95 0.026 77);
+  --sidebar-foreground: oklch(0.29 0.035 49);
+  --sidebar-primary: oklch(0.63 0.174 40);
+  --sidebar-primary-foreground: oklch(0.995 0.006 75);
+  --sidebar-accent: oklch(0.92 0.053 54);
+  --sidebar-accent-foreground: oklch(0.29 0.035 49);
+  --sidebar-border: oklch(0.8 0.032 72 / 72%);
+  --sidebar-ring: oklch(0.63 0.174 40);
+}
+
+.login-glow {
+  background: radial-gradient(circle at 20% 15%, rgb(125 224 180 / 15%), transparent 30%), radial-gradient(circle at 80% 80%, rgb(69 154 128 / 16%), transparent 34%);
+}
+
+.media-hero {
+  background: #172624;
+}
+
+.media-hero-overlay {
+  background: linear-gradient(to right, #10201f, rgb(16 32 31 / 80%), rgb(16 32 31 / 15%));
+}
+
+html[data-theme='cloud'] .login-glow {
+  background: radial-gradient(circle at 18% 12%, rgb(95 181 255 / 27%), transparent 31%), radial-gradient(circle at 82% 86%, rgb(175 215 255 / 42%), transparent 36%);
+}
+
+html[data-theme='dawn'] .login-glow {
+  background: radial-gradient(circle at 18% 12%, rgb(255 191 126 / 32%), transparent 30%), radial-gradient(circle at 82% 86%, rgb(255 213 173 / 42%), transparent 36%);
+}
+
+html[data-theme='cloud'] .media-hero {
+  background: oklch(0.88 0.055 240);
+}
+
+html[data-theme='cloud'] .media-hero-overlay {
+  background: linear-gradient(to right, rgb(237 247 255 / 98%), rgb(237 247 255 / 85%), rgb(237 247 255 / 15%));
+}
+
+html[data-theme='dawn'] .media-hero {
+  background: oklch(0.91 0.05 63);
+}
+
+html[data-theme='dawn'] .media-hero-overlay {
+  background: linear-gradient(to right, rgb(255 248 236 / 98%), rgb(255 248 236 / 85%), rgb(255 248 236 / 15%));
+}
+
+/* Most application surfaces predate the theme switcher and use compact
+   utility classes. These adaptations keep their hierarchy legible in light
+   palettes without changing the established dark-forest presentation. */
+html[data-theme='cloud'] [class*='border-white/'],
+html[data-theme='dawn'] [class*='border-white/'] {
+  border-color: var(--border) !important;
+}
+
+html[data-theme='cloud'] [class*='divide-white/'] > :not([hidden]) ~ :not([hidden]),
+html[data-theme='dawn'] [class*='divide-white/'] > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border) !important;
+}
+
+html[data-theme='cloud'] [class*='bg-white/'],
+html[data-theme='dawn'] [class*='bg-white/'] {
+  background-color: rgb(255 255 255 / 72%) !important;
+}
+
+html[data-theme='cloud'] [class*='bg-black/'],
+html[data-theme='dawn'] [class*='bg-black/'] {
+  background-color: color-mix(in oklch, var(--foreground) 5%, transparent) !important;
+}
+
+html[data-theme='cloud'] [class*='text-white/'],
+html[data-theme='dawn'] [class*='text-white/'],
+html[data-theme='cloud'] [class~='text-white'],
+html[data-theme='dawn'] [class~='text-white'] {
+  color: var(--foreground) !important;
+}
+
+html[data-theme='cloud'] [class*='bg-[#101c1b]'],
+html[data-theme='cloud'] [class*='bg-[#101c1a]'],
+html[data-theme='cloud'] [class*='bg-[#152321]'],
+html[data-theme='dawn'] [class*='bg-[#101c1b]'],
+html[data-theme='dawn'] [class*='bg-[#101c1a]'],
+html[data-theme='dawn'] [class*='bg-[#152321]'] {
+  background-color: var(--card) !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
