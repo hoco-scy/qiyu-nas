@@ -13,7 +13,9 @@
   }
 
   redir /jellyfin /jellyfin/ 308
-  handle /jellyfin/* {
+  # Keep Jellyfin's internal API at its native root while exposing it below
+  # the portal's maintenance route.
+  handle_path /jellyfin/* {
     reverse_proxy jellyfin:8096
   }
 

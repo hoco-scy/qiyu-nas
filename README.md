@@ -54,9 +54,9 @@ docker compose --env-file .env up -d --build
 
 ### 首次配置 Jellyfin
 
-首次打开“影音”页时，门户会使用 `.env` 中的账号自动完成 Jellyfin 的首个管理员账户初始化，因此不需要第二次登录。随后打开 `http://<主机地址>:8080/jellyfin/` 仅用于高级维护。
+首次打开“影音”页时，门户会使用 `.env` 中的账号自动完成 Jellyfin 的首个管理员账户初始化，并建立默认的影片库 `/media/Movies` 与剧集库 `/media/Shows`，因此不需要第二次登录。随后打开 `http://<主机地址>:8080/jellyfin/` 仅用于高级维护。
 
-在 Jellyfin 中添加媒体库，电影目录设为 `/media/Movies`，剧集目录设为 `/media/Shows`。不要在 Jellyfin 网络设置中设置 Base URL；Caddy 会负责 `/jellyfin/` 的反向代理。
+将电影放入 `/media/Movies`，剧集放入 `/media/Shows` 即可。不要在 Jellyfin 网络设置中设置 Base URL；Caddy 会负责 `/jellyfin/` 的反向代理。
 
 将媒体放入 `data/media/Movies` 或 `data/media/Shows`。Jellyfin 扫描完成后，会出现在栖屿的“影音”页面。
 

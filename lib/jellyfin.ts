@@ -28,6 +28,10 @@ type JellyfinView = {
   PrimaryImageAspectRatio?: number;
 };
 
+type JellyfinVirtualFolder = {
+  Name?: string;
+};
+
 let session: JellyfinSession | undefined;
 let bootstrapPromise: Promise<boolean> | undefined;
 
@@ -87,18 +91,49 @@ async function ensureJellyfinBootstrapped(username: string, password: string) {
   return bootstrapPromise;
 }
 
+async function createDefaultLibraries(activeSession: JellyfinSession) {
+  const headers = new Headers({ ...clientHeaders(), 'X-Emby-Token': activeSession.accessToken });
+  const existingResponse = await fetch(`${baseUrl()}/Library/VirtualFolders`, { headers, cache: 'no-store' });
+  if (!existingResponse.ok) return;
+
+  const existing = await existingResponse.json() as JellyfinVirtualFolder[];
+  const existingNames = new Set(existing.map((folder) => folder.Name?.toLocaleLowerCase()).filter(Boolean));
+  const defaults = [
+    { name: 'Movies', type: 'movies', path: '/media/Movies' },
+    { name: 'Shows', type: 'tvshows', path: '/media/Shows' },
+  ];
+
+  await Promise.all(defaults
+    .filter((library) => !existingNames.has(library.name.toLocaleLowerCase()))
+    .map(async (library) => {
+      const query = new URLSearchParams({
+        name: library.name,
+        collectionType: library.type,
+        paths: library.path,
+        refreshLibrary: 'true',
+      });
+      await fetch(`${baseUrl()}/Library/VirtualFolders?${query}`, {
+        method: 'POST',
+        headers,
+        cache: 'no-store',
+      });
+    }));
+}
+
 async function authenticate() {
   const username = process.env.JELLYFIN_USERNAME;
   const password = process.env.JELLYFIN_PASSWORD;
   if (!username || !password) throw new Error('Jellyfin service credentials are not configured');
   let response = await requestAuthentication(username, password);
-  if (response.status === 401 && await ensureJellyfinBootstrapped(username, password)) {
+  const wasBootstrapped = response.status === 401 && await ensureJellyfinBootstrapped(username, password);
+  if (wasBootstrapped) {
     response = await requestAuthentication(username, password);
   }
   if (!response.ok) throw new Error(`Jellyfin authentication failed (${response.status})`);
   const payload = await response.json() as { AccessToken?: string; User?: { Id?: string } };
   if (!payload.AccessToken || !payload.User?.Id) throw new Error('Jellyfin returned an invalid session');
   session = { accessToken: payload.AccessToken, userId: payload.User.Id, expiresAt: Date.now() + 45 * 60 * 1000 };
+  if (wasBootstrapped) await createDefaultLibraries(session);
   return session;
 }
 
