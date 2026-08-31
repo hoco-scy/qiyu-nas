@@ -61,6 +61,9 @@ export function FileCenter() {
   const [preview, setPreview] = useState<Entry | null>(null);
   const [moveOpen, setMoveOpen] = useState(false);
   const [destination, setDestination] = useState('files');
+  const [renameTarget, setRenameTarget] = useState<Entry | null>(null);
+  const [renameName, setRenameName] = useState('');
+  const [deleteTargets, setDeleteTargets] = useState<string[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
 
   async function load(pathname = currentPath) {
@@ -131,17 +134,33 @@ export function FileCenter() {
     } catch (error) { setMessage(error instanceof Error ? error.message : '新建失败'); }
   }
 
-  async function renameEntry(entry: Entry) {
-    const name = window.prompt('输入新的名称', entry.name);
-    if (!name || name === entry.name) return;
-    try { await action({ action: 'rename', path: entry.path, name }); setMessage('已改名'); } catch (error) { setMessage(error instanceof Error ? error.message : '改名失败'); }
+  function openRename(entry: Entry) {
+    setRenameTarget(entry);
+    setRenameName(entry.name);
   }
 
-  async function deletePaths(paths: string[]) {
-    if (!paths.length || !window.confirm(`确定删除所选的 ${paths.length} 个项目吗？文件夹中的内容也会一并删除。`)) return;
+  async function submitRename(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!renameTarget || !renameName.trim() || renameName.trim() === renameTarget.name) {
+      setRenameTarget(null);
+      return;
+    }
     try {
-      for (const path of paths) await action({ action: 'delete', path });
-      setMessage(`已删除 ${paths.length} 个项目`);
+      await action({ action: 'rename', path: renameTarget.path, name: renameName });
+      setRenameTarget(null);
+      setMessage('已改名');
+    } catch (error) { setMessage(error instanceof Error ? error.message : '改名失败'); }
+  }
+
+  function openDelete(paths: string[]) {
+    if (paths.length) setDeleteTargets(paths);
+  }
+
+  async function deleteSelected() {
+    try {
+      for (const path of deleteTargets) await action({ action: 'delete', path });
+      setMessage(`已删除 ${deleteTargets.length} 个项目`);
+      setDeleteTargets([]);
     } catch (error) { setMessage(error instanceof Error ? error.message : '删除失败'); }
   }
 
@@ -187,16 +206,18 @@ export function FileCenter() {
       <section className="grid gap-2 sm:grid-cols-3">{roots.map((root) => <button key={root.path} onClick={() => go(root.path)} className={`flex items-center gap-3 rounded-xl border p-3.5 text-left transition ${currentPath === root.path || currentPath.startsWith(`${root.path}/`) ? 'border-primary/30 bg-primary/[0.08]' : 'border-white/8 bg-white/[0.025] hover:border-white/15 hover:bg-white/[0.045]'}`}><span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><Folder className="size-4" /></span><span className="min-w-0"><span className="block text-sm font-medium">{root.label}</span><span className="mt-0.5 block truncate text-xs text-muted-foreground">{root.note}</span></span></button>)}</section>
 
       <section onDragOver={(event) => { event.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={onDrop} className={`rounded-2xl border transition ${dragging ? 'border-primary/50 bg-primary/[0.08]' : 'border-white/8 bg-white/[0.025]'}`}>
-        <div className="flex flex-wrap items-center gap-2 border-b border-white/7 px-3 py-2.5 sm:px-5"><button disabled={!currentPath} onClick={() => go(parentPath)} className="rounded-lg p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground disabled:opacity-30" aria-label="上一级"><ArrowLeft className="size-4" /></button><div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-sm"><button onClick={() => go('')} className="shrink-0 text-muted-foreground hover:text-foreground">栖屿空间</button>{breadcrumbs.map((part, index) => { const crumb = breadcrumbs.slice(0, index + 1).join('/'); return <span key={crumb} className="flex shrink-0 items-center gap-1"><span className="text-muted-foreground/50">/</span><button onClick={() => go(crumb)} className={index === breadcrumbs.length - 1 ? 'font-medium' : 'text-muted-foreground hover:text-foreground'}>{part}</button></span>; })}</div><div className="relative w-full sm:w-52"><Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} className="h-8 border-white/8 bg-black/10 pl-8 text-xs" placeholder="在当前目录搜索" /></div><button onClick={() => setView((current) => current === 'grid' ? 'list' : 'grid')} className="rounded-lg p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground" aria-label="切换视图">{view === 'grid' ? <LayoutList className="size-4" /> : <Grid2X2 className="size-4" />}</button></div>
+        <div className="flex flex-wrap items-center gap-2 border-b border-white/7 px-3 py-2.5 sm:px-5"><button disabled={!currentPath} onClick={() => go(parentPath)} className="rounded-lg p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground disabled:opacity-30" aria-label="上一级"><ArrowLeft className="size-4" /></button><div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-sm"><button onClick={() => go('')} className="shrink-0 text-muted-foreground hover:text-foreground">栖屿空间</button>{breadcrumbs.map((part, index) => { const crumb = breadcrumbs.slice(0, index + 1).join('/'); const label = index === 0 ? roots.find((root) => root.path === part)?.label || part : part; return <span key={crumb} className="flex shrink-0 items-center gap-1"><span className="text-muted-foreground/50">/</span><button onClick={() => go(crumb)} className={index === breadcrumbs.length - 1 ? 'font-medium' : 'text-muted-foreground hover:text-foreground'}>{label}</button></span>; })}</div><div className="relative w-full sm:w-52"><Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} className="h-8 border-white/8 bg-black/10 pl-8 text-xs" placeholder="在当前目录搜索" /></div><button onClick={() => setView((current) => current === 'grid' ? 'list' : 'grid')} className="rounded-lg p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground" aria-label="切换视图">{view === 'grid' ? <LayoutList className="size-4" /> : <Grid2X2 className="size-4" />}</button></div>
 
         {folderMode ? <form onSubmit={createFolder} className="flex items-center gap-2 border-b border-white/7 bg-primary/[0.035] px-4 py-3 sm:px-5"><FolderPlus className="size-4 text-primary" /><Input value={folderName} onChange={(event) => setFolderName(event.target.value)} autoFocus placeholder="新文件夹名称" className="h-8 border-white/8 bg-black/10 text-sm" /><Button size="sm" type="submit" className="rounded-lg">创建</Button><button type="button" onClick={() => setFolderMode(false)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-white/5"><X className="size-4" /></button></form> : null}
         {message ? <div className="flex items-center justify-between border-b border-white/7 bg-white/[0.02] px-4 py-2.5 text-xs text-muted-foreground sm:px-5"><span>{message}</span><button onClick={() => setMessage('')} className="rounded p-1 hover:bg-white/5" aria-label="关闭提示"><X className="size-3" /></button></div> : null}
-        {selected.size ? <div className="flex flex-wrap items-center gap-2 border-b border-primary/15 bg-primary/[0.055] px-4 py-2.5 text-xs sm:px-5"><span className="mr-1 text-primary">已选择 {selected.size} 项</span><Button size="sm" variant="outline" onClick={() => { setDestination(currentPath.split('/')[0] || 'files'); setMoveOpen(true); }} className="h-7 rounded-md border-primary/20 bg-transparent"><MoveRight className="size-3.5" />移动</Button><Button size="sm" variant="ghost" onClick={() => void deletePaths(Array.from(selected))} className="h-7 rounded-md text-red-200 hover:bg-red-300/10 hover:text-red-100"><Trash2 className="size-3.5" />删除</Button><button onClick={() => setSelected(new Set())} className="ml-auto text-muted-foreground hover:text-foreground">取消选择</button></div> : null}
+        {selected.size ? <div className="flex flex-wrap items-center gap-2 border-b border-primary/15 bg-primary/[0.055] px-4 py-2.5 text-xs sm:px-5"><span className="mr-1 text-primary">已选择 {selected.size} 项</span><Button size="sm" variant="outline" onClick={() => { setDestination(currentPath.split('/')[0] || 'files'); setMoveOpen(true); }} className="h-7 rounded-md border-primary/20 bg-transparent"><MoveRight className="size-3.5" />移动</Button><Button size="sm" variant="ghost" onClick={() => openDelete(Array.from(selected))} className="h-7 rounded-md text-red-200 hover:bg-red-300/10 hover:text-red-100"><Trash2 className="size-3.5" />删除</Button><button onClick={() => setSelected(new Set())} className="ml-auto text-muted-foreground hover:text-foreground">取消选择</button></div> : null}
 
-        <div className="min-h-[390px] p-3 sm:p-5">{loading ? <div className="flex min-h-[330px] items-center justify-center gap-3 text-sm text-muted-foreground"><LoaderCircle className="size-5 animate-spin text-primary" />正在读取目录</div> : !entries.length ? <EmptyState path={currentPath} filtered={Boolean(query)} onUpload={() => fileInput.current?.click()} /> : view === 'grid' ? <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{entries.map((entry) => <FileCard key={entry.path} entry={entry} selected={selected.has(entry.path)} onToggle={toggle} onOpen={() => entry.type === 'directory' ? go(entry.path) : setPreview(entry)} onRename={() => void renameEntry(entry)} onDelete={() => void deletePaths([entry.path])} />)}</div> : <div><div className="grid grid-cols-[36px_minmax(0,1fr)_44px] items-center border-b border-white/7 px-2 pb-2 text-[11px] text-muted-foreground sm:grid-cols-[36px_minmax(240px,1fr)_130px_110px_44px]"><Checkbox checked={allSelected} onCheckedChange={(checked) => setSelected(checked ? new Set(entries.map((entry) => entry.path)) : new Set())} /><span>名称</span><button onClick={() => setSort((current) => current === 'updated' ? 'default' : 'updated')} className="hidden items-center gap-1 text-left hover:text-foreground sm:flex">修改时间 <ArrowUpDown className="size-3" /></button><button onClick={() => setSort((current) => current === 'size' ? 'default' : 'size')} className="hidden items-center gap-1 text-left hover:text-foreground sm:flex">大小 <ArrowUpDown className="size-3" /></button></div>{entries.map((entry) => <FileRow key={entry.path} entry={entry} selected={selected.has(entry.path)} onToggle={toggle} onOpen={() => entry.type === 'directory' ? go(entry.path) : setPreview(entry)} onRename={() => void renameEntry(entry)} onDelete={() => void deletePaths([entry.path])} />)}</div>}</div>
+        <div className="min-h-[390px] p-3 sm:p-5">{loading ? <div className="flex min-h-[330px] items-center justify-center gap-3 text-sm text-muted-foreground"><LoaderCircle className="size-5 animate-spin text-primary" />正在读取目录</div> : !entries.length ? <EmptyState path={currentPath} filtered={Boolean(query)} onUpload={() => fileInput.current?.click()} /> : view === 'grid' ? <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{entries.map((entry) => <FileCard key={entry.path} entry={entry} selected={selected.has(entry.path)} onToggle={toggle} onOpen={() => entry.type === 'directory' ? go(entry.path) : setPreview(entry)} onRename={() => openRename(entry)} onDelete={() => openDelete([entry.path])} />)}</div> : <div><div className="grid grid-cols-[36px_minmax(0,1fr)_44px] items-center border-b border-white/7 px-2 pb-2 text-[11px] text-muted-foreground sm:grid-cols-[36px_minmax(240px,1fr)_130px_110px_44px]"><Checkbox checked={allSelected} onCheckedChange={(checked) => setSelected(checked ? new Set(entries.map((entry) => entry.path)) : new Set())} /><span>名称</span><button onClick={() => setSort((current) => current === 'updated' ? 'default' : 'updated')} className="hidden items-center gap-1 text-left hover:text-foreground sm:flex">修改时间 <ArrowUpDown className="size-3" /></button><button onClick={() => setSort((current) => current === 'size' ? 'default' : 'size')} className="hidden items-center gap-1 text-left hover:text-foreground sm:flex">大小 <ArrowUpDown className="size-3" /></button></div>{entries.map((entry) => <FileRow key={entry.path} entry={entry} selected={selected.has(entry.path)} onToggle={toggle} onOpen={() => entry.type === 'directory' ? go(entry.path) : setPreview(entry)} onRename={() => openRename(entry)} onDelete={() => openDelete([entry.path])} />)}</div>}</div>
       </section>
     </div>
     <PreviewDialog entry={preview} onClose={() => setPreview(null)} />
+    <RenameDialog entry={renameTarget} name={renameName} onName={setRenameName} onClose={() => setRenameTarget(null)} onSubmit={submitRename} />
+    <DeleteDialog paths={deleteTargets} onClose={() => setDeleteTargets([])} onDelete={() => void deleteSelected()} />
     <MoveDialog open={moveOpen} destination={destination} onDestination={setDestination} onClose={() => setMoveOpen(false)} onMove={() => void moveSelected()} count={selected.size} />
   </QiyuAppShell>;
 }
@@ -205,8 +226,8 @@ function EmptyState({ path, filtered, onUpload }: { path: string; filtered: bool
   return <div className="flex min-h-[330px] flex-col items-center justify-center rounded-xl border border-dashed border-white/10 text-center"><Folder className="size-7 text-muted-foreground" /><p className="mt-4 text-sm font-medium">{filtered ? '没有匹配的文件' : path ? '这个文件夹还是空的' : '选择一个空间开始管理'}</p><p className="mt-1.5 max-w-xs text-xs leading-5 text-muted-foreground">{filtered ? '换个关键词试试。' : path ? '可直接拖入文件，或使用上传按钮。' : '个人文件、影音资源和网页发布各自独立。'}</p>{path && !filtered ? <Button onClick={onUpload} variant="outline" className="mt-5 rounded-lg border-white/10 bg-white/[0.02]"><Upload className="size-4" />上传文件</Button> : null}</div>;
 }
 
-function EntryMenu({ onRename, onDelete }: { onRename: () => void; onDelete: () => void }) {
-  return <details className="relative z-20"><summary className="list-none rounded-lg p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground"><MoreHorizontal className="size-4" /></summary><div className="absolute right-0 z-30 mt-1 w-28 rounded-lg border border-white/10 bg-[#1b2927] p-1 shadow-xl"><button onClick={onRename} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs hover:bg-white/5"><Pencil className="size-3.5" />改名</button><button onClick={onDelete} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-red-200 hover:bg-red-400/10"><Trash2 className="size-3.5" />删除</button></div></details>;
+function EntryMenu({ downloadHref, onRename, onDelete }: { downloadHref?: string; onRename: () => void; onDelete: () => void }) {
+  return <details className="relative z-20"><summary className="list-none rounded-lg p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground"><MoreHorizontal className="size-4" /></summary><div className="absolute right-0 z-30 mt-1 w-28 rounded-lg border border-white/10 bg-[#1b2927] p-1 shadow-xl">{downloadHref ? <a href={downloadHref} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs hover:bg-white/5"><Download className="size-3.5" />下载</a> : null}<button onClick={onRename} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs hover:bg-white/5"><Pencil className="size-3.5" />改名</button><button onClick={onDelete} className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-xs text-red-200 hover:bg-red-400/10"><Trash2 className="size-3.5" />删除</button></div></details>;
 }
 
 function FileCard({ entry, selected, onToggle, onOpen, onRename, onDelete }: { entry: Entry; selected: boolean; onToggle: (path: string, checked: boolean) => void; onOpen: () => void; onRename: () => void; onDelete: () => void }) {
@@ -216,7 +237,7 @@ function FileCard({ entry, selected, onToggle, onOpen, onRename, onDelete }: { e
 
 function FileRow({ entry, selected, onToggle, onOpen, onRename, onDelete }: { entry: Entry; selected: boolean; onToggle: (path: string, checked: boolean) => void; onOpen: () => void; onRename: () => void; onDelete: () => void }) {
   const visual = visualFor(entry); const Icon = visual.icon;
-  return <div className={`grid grid-cols-[36px_minmax(0,1fr)_44px] items-center rounded-lg px-2 py-2 transition sm:grid-cols-[36px_minmax(240px,1fr)_130px_110px_44px] ${selected ? 'bg-primary/[0.06]' : 'hover:bg-white/[0.025]'}`}><Checkbox checked={selected} onCheckedChange={(checked) => onToggle(entry.path, checked)} /><button onClick={onOpen} className="flex min-w-0 items-center gap-3 text-left"><span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${visual.tone}`}><Icon className="size-4" /></span><span className="min-w-0"><span className="block truncate text-sm">{entry.name}</span><span className="mt-0.5 block text-[11px] text-muted-foreground">{entry.type === 'directory' ? '文件夹' : entry.extension.toUpperCase() || '文件'}</span></span></button><span className="hidden text-xs text-muted-foreground sm:block">{entry.modifiedAt}</span><span className="hidden text-xs text-muted-foreground sm:block">{entry.type === 'directory' ? '—' : formatBytes(entry.size)}</span><EntryMenu onRename={onRename} onDelete={onDelete} /></div>;
+  return <div className={`grid grid-cols-[36px_minmax(0,1fr)_44px] items-center rounded-lg px-2 py-2 transition sm:grid-cols-[36px_minmax(240px,1fr)_130px_110px_44px] ${selected ? 'bg-primary/[0.06]' : 'hover:bg-white/[0.025]'}`}><Checkbox checked={selected} onCheckedChange={(checked) => onToggle(entry.path, checked)} /><button onClick={onOpen} className="flex min-w-0 items-center gap-3 text-left"><span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${visual.tone}`}><Icon className="size-4" /></span><span className="min-w-0"><span className="block truncate text-sm">{entry.name}</span><span className="mt-0.5 block text-[11px] text-muted-foreground">{entry.type === 'directory' ? '文件夹' : entry.extension.toUpperCase() || '文件'}</span></span></button><span className="hidden text-xs text-muted-foreground sm:block">{entry.modifiedAt}</span><span className="hidden text-xs text-muted-foreground sm:block">{entry.type === 'directory' ? '—' : formatBytes(entry.size)}</span><EntryMenu downloadHref={entry.type === 'file' ? contentUrl(entry.path, true) : undefined} onRename={onRename} onDelete={onDelete} /></div>;
 }
 
 function PreviewDialog({ entry, onClose }: { entry: Entry | null; onClose: () => void }) {
@@ -231,6 +252,14 @@ function PreviewContent({ entry }: { entry: Entry }) {
   if (['mp3', 'm4a', 'aac', 'ogg', 'wav'].includes(entry.extension)) return <div className="flex min-h-[240px] items-center justify-center"><audio src={url} controls className="w-full max-w-lg" /></div>;
   if (['md', 'xls', 'xlsx', 'doc', 'docx'].includes(entry.extension)) return <DocumentPreview key={entry.path} entry={entry} url={url} />;
   return <iframe title={entry.name} sandbox="" src={url} className="h-[65vh] w-full rounded-lg border border-white/10 bg-white" />;
+}
+
+function RenameDialog({ entry, name, onName, onClose, onSubmit }: { entry: Entry | null; name: string; onName: (value: string) => void; onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+  return <Dialog open={Boolean(entry)} onOpenChange={(open) => { if (!open) onClose(); }}><DialogContent className="border-white/10 bg-[#101b1a]"><form onSubmit={onSubmit}><DialogHeader><DialogTitle>重命名</DialogTitle><DialogDescription>为“{entry?.name}”输入新的名称。</DialogDescription></DialogHeader><Input value={name} onChange={(event) => onName(event.target.value)} autoFocus required className="mt-5 border-white/10 bg-black/15" aria-label="新的名称" /><DialogFooter><Button type="button" variant="outline" onClick={onClose} className="rounded-lg border-white/10">取消</Button><Button type="submit" className="rounded-lg"><Pencil className="size-4" />保存名称</Button></DialogFooter></form></DialogContent></Dialog>;
+}
+
+function DeleteDialog({ paths, onClose, onDelete }: { paths: string[]; onClose: () => void; onDelete: () => void }) {
+  return <Dialog open={paths.length > 0} onOpenChange={(open) => { if (!open) onClose(); }}><DialogContent className="border-white/10 bg-[#101b1a]"><DialogHeader><DialogTitle>确认删除</DialogTitle><DialogDescription>将永久删除 {paths.length} 个项目；文件夹内的内容也会一并删除。</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={onClose} className="rounded-lg border-white/10">取消</Button><Button variant="destructive" onClick={onDelete} className="rounded-lg"><Trash2 className="size-4" />确认删除</Button></DialogFooter></DialogContent></Dialog>;
 }
 
 function MoveDialog({ open, destination, onDestination, onClose, onMove, count }: { open: boolean; destination: string; onDestination: (value: string) => void; onClose: () => void; onMove: () => void; count: number }) {

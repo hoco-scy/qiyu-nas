@@ -53,6 +53,7 @@ export async function GET(request: Request) {
       'X-Content-Type-Options': 'nosniff',
     });
     if (range) headers.set('Content-Range', `bytes ${start}-${end}/${details.size}`);
+    if (details.size === 0) return new Response(null, { status: 200, headers });
     const stream = createReadStream(target, { start, end });
     return new Response(Readable.toWeb(stream) as ReadableStream, { status: range ? 206 : 200, headers });
   } catch (error) {
