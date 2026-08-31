@@ -20,6 +20,16 @@ const roots = [
   { path: 'sites', label: '网页发布', note: 'HTML、CSS 和静态站点' },
 ];
 
+const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'ico'];
+const videoExtensions = ['mp4', 'm4v', 'mov', 'webm', 'ogv'];
+const audioExtensions = ['mp3', 'm4a', 'aac', 'ogg', 'wav', 'flac', 'opus'];
+const documentExtensions = ['md', 'doc', 'docx', 'xls', 'xlsx'];
+const textExtensions = ['txt', 'log', 'csv', 'json', 'yaml', 'yml', 'toml', 'ini', 'conf', 'properties', 'xml', 'html', 'htm', 'css', 'js', 'mjs', 'cjs', 'ts', 'tsx', 'jsx', 'sql', 'sh', 'bash', 'zsh', 'py', 'java', 'c', 'cpp', 'h', 'go', 'rs', 'php', 'rb', 'vue', 'svelte', 'svg'];
+
+function canPreviewExtension(extension: string) {
+  return imageExtensions.includes(extension) || videoExtensions.includes(extension) || audioExtensions.includes(extension) || extension === 'pdf' || documentExtensions.includes(extension) || textExtensions.includes(extension);
+}
+
 function formatBytes(value: number) {
   if (!value) return '—';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -35,11 +45,11 @@ function contentUrl(path: string, download = false) {
 
 function visualFor(entry: Entry) {
   if (entry.type === 'directory') return { icon: Folder, tone: 'bg-primary/10 text-primary' };
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'].includes(entry.extension)) return { icon: FileImage, tone: 'bg-sky-300/10 text-sky-200' };
-  if (['mp4', 'mkv', 'mov', 'm4v', 'webm'].includes(entry.extension)) return { icon: FileVideo, tone: 'bg-violet-300/10 text-violet-200' };
-  if (['mp3', 'm4a', 'aac', 'ogg', 'flac', 'wav'].includes(entry.extension)) return { icon: FileAudio, tone: 'bg-amber-200/10 text-amber-100' };
+  if (imageExtensions.includes(entry.extension)) return { icon: FileImage, tone: 'bg-sky-300/10 text-sky-200' };
+  if (videoExtensions.includes(entry.extension) || entry.extension === 'mkv') return { icon: FileVideo, tone: 'bg-violet-300/10 text-violet-200' };
+  if (audioExtensions.includes(entry.extension)) return { icon: FileAudio, tone: 'bg-amber-200/10 text-amber-100' };
   if (['zip', 'rar', '7z', 'tar', 'gz'].includes(entry.extension)) return { icon: FileArchive, tone: 'bg-orange-200/10 text-orange-100' };
-  if (['html', 'css', 'js', 'ts', 'tsx', 'json', 'md'].includes(entry.extension)) return { icon: FileCode2, tone: 'bg-cyan-200/10 text-cyan-100' };
+  if (textExtensions.includes(entry.extension) || entry.extension === 'md') return { icon: FileCode2, tone: 'bg-cyan-200/10 text-cyan-100' };
   if (['pdf', 'txt', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(entry.extension)) return { icon: FileText, tone: 'bg-white/[0.07] text-muted-foreground' };
   return { icon: File, tone: 'bg-white/[0.05] text-muted-foreground' };
 }
@@ -241,16 +251,16 @@ function FileRow({ entry, selected, onToggle, onOpen, onRename, onDelete }: { en
 }
 
 function PreviewDialog({ entry, onClose }: { entry: Entry | null; onClose: () => void }) {
-  const previewable = entry && ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'mp4', 'mov', 'm4v', 'webm', 'mp3', 'm4a', 'aac', 'ogg', 'wav', 'pdf', 'txt', 'md', 'json', 'csv', 'xls', 'xlsx', 'doc', 'docx'].includes(entry.extension);
+  const previewable = entry && canPreviewExtension(entry.extension);
   return <Dialog open={Boolean(entry)} onOpenChange={(open) => { if (!open) onClose(); }}><DialogContent className="max-w-6xl border-white/10 bg-[#101b1a] p-0" showCloseButton><DialogHeader className="border-b border-white/7 px-5 py-4 pr-12"><DialogTitle className="truncate">{entry?.name}</DialogTitle><DialogDescription>{entry ? `${entry.extension.toUpperCase() || '文件'} · ${formatBytes(entry.size)}` : ''}</DialogDescription></DialogHeader><div className="min-h-[280px] bg-black/30 p-4 sm:p-6">{entry && previewable ? <PreviewContent entry={entry} /> : <div className="flex min-h-[260px] flex-col items-center justify-center text-center"><File className="size-8 text-muted-foreground" /><p className="mt-4 text-sm">此格式暂不支持原位预览</p><a href={entry ? contentUrl(entry.path, true) : '#'} className="mt-4 text-sm text-primary">下载文件</a></div>}</div><DialogFooter className="mx-0 mb-0 rounded-none border-white/7 bg-white/[0.02]"><Button variant="outline" onClick={onClose} className="rounded-lg border-white/10">关闭</Button>{entry ? <a href={contentUrl(entry.path, true)} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/85"><Download className="size-4" />下载</a> : null}</DialogFooter></DialogContent></Dialog>;
 }
 
 function PreviewContent({ entry }: { entry: Entry }) {
   const url = contentUrl(entry.path);
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'].includes(entry.extension)) return <img src={url} alt={entry.name} className="mx-auto max-h-[65vh] max-w-full rounded-lg object-contain" />;
-  if (['mp4', 'mov', 'm4v', 'webm'].includes(entry.extension)) return <video src={url} controls className="mx-auto max-h-[65vh] w-full rounded-lg" />;
-  if (['mp3', 'm4a', 'aac', 'ogg', 'wav'].includes(entry.extension)) return <div className="flex min-h-[240px] items-center justify-center"><audio src={url} controls className="w-full max-w-lg" /></div>;
-  if (['md', 'xls', 'xlsx', 'doc', 'docx'].includes(entry.extension)) return <DocumentPreview key={entry.path} entry={entry} url={url} />;
+  if (imageExtensions.includes(entry.extension)) return <img src={url} alt={entry.name} className="mx-auto max-h-[65vh] max-w-full rounded-lg object-contain" />;
+  if (videoExtensions.includes(entry.extension)) return <video src={url} controls className="mx-auto max-h-[65vh] w-full rounded-lg" />;
+  if (audioExtensions.includes(entry.extension)) return <div className="flex min-h-[240px] items-center justify-center"><audio src={url} controls className="w-full max-w-lg" /></div>;
+  if (documentExtensions.includes(entry.extension) || textExtensions.includes(entry.extension)) return <DocumentPreview key={entry.path} entry={entry} url={url} />;
   return <iframe title={entry.name} sandbox="" src={url} className="h-[65vh] w-full rounded-lg border border-white/10 bg-white" />;
 }
 

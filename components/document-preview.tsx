@@ -10,9 +10,16 @@ type Sheet = { name: string; rows: string[][]; totalRows: number; totalColumns: 
 type Preview =
   | { kind: 'spreadsheet'; sheets: Sheet[] }
   | { kind: 'word'; html: string; warnings: string[] }
-  | { kind: 'markdown'; source: string };
+  | { kind: 'markdown'; source: string }
+  | { kind: 'text'; source: string; label: string };
 
-const maxPreviewBytes = 30 * 1024 * 1024;
+const maxOfficePreviewBytes = 30 * 1024 * 1024;
+const maxTextPreviewBytes = 8 * 1024 * 1024;
+const textPreviewExtensions = new Set(['txt', 'log', 'csv', 'json', 'yaml', 'yml', 'toml', 'ini', 'conf', 'properties', 'xml', 'html', 'htm', 'css', 'js', 'mjs', 'cjs', 'ts', 'tsx', 'jsx', 'sql', 'sh', 'bash', 'zsh', 'py', 'java', 'c', 'cpp', 'h', 'go', 'rs', 'php', 'rb', 'vue', 'svelte', 'svg']);
+
+function isTextPreview(extension: string) {
+  return extension === 'md' || textPreviewExtensions.has(extension);
+}
 
 export function DocumentPreview({ entry, url }: { entry: DocumentEntry; url: string }) {
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -22,11 +29,12 @@ export function DocumentPreview({ entry, url }: { entry: DocumentEntry; url: str
   useEffect(() => {
     let cancelled = false;
 
+    const maxPreviewBytes = isTextPreview(entry.extension) ? maxTextPreviewBytes : maxOfficePreviewBytes;
     if (entry.size > maxPreviewBytes) {
       void Promise.resolve().then(() => {
         if (!cancelled) {
           setLoading(false);
-          setError('为避免浏览器占用过多内存，超过 30 MB 的文档请下载后查看。');
+          setError(`为避免浏览器占用过多内存，超过 ${Math.round(maxPreviewBytes / 1024 / 1024)} MB 的文件请下载后查看。`);
         }
       });
       return () => { cancelled = true; };
@@ -38,6 +46,8 @@ export function DocumentPreview({ entry, url }: { entry: DocumentEntry; url: str
         if (!response.ok) throw new Error('文件读取失败');
         const nextPreview = entry.extension === 'md'
           ? { kind: 'markdown' as const, source: await response.text() }
+          : textPreviewExtensions.has(entry.extension)
+            ? { kind: 'text' as const, source: await response.text(), label: entry.extension.toUpperCase() || 'TEXT' }
           : await parseOfficeDocument(entry.extension, await response.arrayBuffer());
         if (!cancelled) setPreview(nextPreview);
       } catch (reason) {
@@ -55,6 +65,7 @@ export function DocumentPreview({ entry, url }: { entry: DocumentEntry; url: str
   if (!preview) return null;
   if (preview.kind === 'spreadsheet') return <SpreadsheetPreview sheets={preview.sheets} />;
   if (preview.kind === 'word') return <WordPreview html={preview.html} warnings={preview.warnings} />;
+  if (preview.kind === 'text') return <TextPreview source={preview.source} label={preview.label} />;
   return <MarkdownPreview source={preview.source} />;
 }
 
@@ -105,6 +116,14 @@ function WordPreview({ html, warnings }: { html: string; warnings: string[] }) {
 
 function MarkdownPreview({ source }: { source: string }) {
   return <article className="markdown-preview max-h-[61vh] overflow-auto rounded-xl bg-white px-6 py-8 text-[15px] leading-7 text-slate-800 shadow-inner sm:px-10"><ReactMarkdown remarkPlugins={[remarkGfm]}>{source}</ReactMarkdown></article>;
+}
+
+function TextPreview({ source, label }: { source: string; label: string }) {
+  const formatted = useMemo(() => {
+    if (label !== 'JSON') return source;
+    try { return JSON.stringify(JSON.parse(source), null, 2); } catch { return source; }
+  }, [label, source]);
+  return <div className="space-y-3"><p className="flex items-center gap-2 text-xs text-muted-foreground"><span className="flex size-8 items-center justify-center rounded-lg bg-violet-300/10 text-violet-100"><FileText className="size-4" /></span>{label} 安全源码预览 · 文件内容不会执行</p><pre className="max-h-[61vh] overflow-auto rounded-xl border border-white/8 bg-[#07100f] p-4 font-mono text-xs leading-6 text-emerald-50 whitespace-pre-wrap">{formatted}</pre></div>;
 }
 
 function UnsupportedDocument({ message, icon: Icon = FileText }: { message: string; icon?: typeof FileText }) {
