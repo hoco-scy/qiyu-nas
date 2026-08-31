@@ -69,7 +69,7 @@ data/sites/home/index.html
 data/sites/my-tool/index.html
 ```
 
-它们分别对应 `/sites/home/` 和 `/sites/my-tool/`。静态站点与门户共享同一个 Caddy 入口，但不会自动继承门户登录保护；只应发布可公开给该网络访问的内容。
+它们分别对应 `/sites/home/` 和 `/sites/my-tool/`。栖屿的“网页”页会自动列出这些目录，点击卡片即可进入站点；`/sites/` 本身会回到网页中心，不再显示 Caddy 的目录浏览页。静态站点与门户共享同一个 Caddy 入口，但不会自动继承门户登录保护；只应发布可公开给该网络访问的内容。
 
 ## 常用配置
 

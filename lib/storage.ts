@@ -148,6 +148,20 @@ export async function listDirectory(input = ''): Promise<{ location: StorageLoca
   };
 }
 
+export async function listPublishedSites() {
+  const { entries } = await listDirectory('sites');
+  const directories = entries.filter((entry) => entry.type === 'directory');
+  const published = await Promise.all(directories.map(async (entry) => {
+    try {
+      await getFile(`${entry.path}/index.html`);
+      return entry;
+    } catch {
+      return null;
+    }
+  }));
+  return published.filter((entry): entry is StorageEntry => entry !== null);
+}
+
 export async function getFile(input: string) {
   const target = await assertSafePath(input);
   const details = await lstat(target);

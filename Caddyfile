@@ -19,10 +19,13 @@
     reverse_proxy jellyfin:8096
   }
 
-  redir /sites /sites/ 308
+  # Site discovery belongs to the portal. Caddy only serves an individual
+  # static site, so its built-in directory browsing is never exposed.
+  redir /sites /websites 308
+  redir /sites/ /websites 308
   handle_path /sites/* {
     root * /srv/sites
-    file_server browse
+    file_server
   }
 
   handle {

@@ -1,10 +1,104 @@
-import { Code2, ExternalLink, FileCode2, Globe2, Upload } from 'lucide-react';
+'use client';
+
+import Link from 'next/link';
+import { ArrowUpRight, Code2, ExternalLink, FileCode2, Globe2, LoaderCircle, Upload } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { QiyuAppShell } from '@/components/qiyu-app-shell';
 
+type SiteEntry = {
+  name: string;
+  path: string;
+  type: 'directory' | 'file';
+  modifiedAt: string;
+};
+
+type SitesPayload = { sites: SiteEntry[]; error?: string };
+
+function siteUrl(name: string) {
+  return `/sites/${encodeURIComponent(name)}/`;
+}
+
 export function SitesCenter() {
+  const [payload, setPayload] = useState<SitesPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    void fetch('/api/sites', { cache: 'no-store' })
+      .then(async (response) => {
+        const data = await response.json() as SitesPayload;
+        if (!response.ok) throw new Error(data.error || '读取网页目录失败');
+        if (active) setPayload(data);
+      })
+      .catch((error: unknown) => {
+        if (active) setPayload({ sites: [], error: error instanceof Error ? error.message : '读取网页目录失败' });
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const sites = useMemo(() => payload?.sites || [], [payload]);
+
   return <QiyuAppShell active="sites" eyebrow="栖屿网页" title="网页发布">
-    <div className="space-y-6"><section className="flex flex-col gap-4 border-b border-white/7 pb-6 md:flex-row md:items-end md:justify-between"><div><p className="text-sm text-primary">静态网页空间</p><h2 className="mt-1.5 text-3xl font-medium tracking-[-0.045em]">把小网站放回自己手里。</h2><p className="mt-2 max-w-xl text-sm text-muted-foreground">上传 HTML、CSS 和资源文件，Caddy 会从同一入口发布它们。</p></div><a href="/files?path=sites" className="inline-flex h-8 w-fit items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/85"><Upload className="size-4" />管理网页文件</a></section><section className="grid gap-3 md:grid-cols-3"><Step index="01" icon={FileCode2} title="建立目录" text="在 sites 下新建网站目录。" /><Step index="02" icon={Upload} title="上传文件" text="放入 index.html 和资源文件。" /><Step index="03" icon={Globe2} title="立即访问" text="访问 /sites/你的目录/。" /></section><section className="grid gap-4 lg:grid-cols-2"><a href="/sites/" className="group rounded-2xl border border-white/8 bg-white/[0.025] p-6 transition hover:border-primary/25 hover:bg-primary/[0.045]"><div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Globe2 className="size-5" /></div><h3 className="mt-6 text-lg font-medium">已发布网页</h3><p className="mt-2 text-sm text-muted-foreground">查看所有当前对内发布的静态站点和资源。</p><span className="mt-7 flex items-center gap-1 text-sm text-primary">打开目录 <ExternalLink className="size-3.5" /></span></a><div className="rounded-2xl border border-white/8 bg-[#101c1b] p-6"><div className="flex size-10 items-center justify-center rounded-xl bg-white/[0.05] text-primary"><Code2 className="size-5" /></div><h3 className="mt-6 text-lg font-medium">适合放什么？</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">个人介绍页、文档站、家庭相册索引和纯前端工具都很合适。需要动态后端的应用仍建议单独部署。</p></div></section></div>
+    <div className="space-y-7">
+      <section className="flex flex-col gap-4 border-b border-white/7 pb-6 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-sm text-primary">静态网页空间</p>
+          <h2 className="mt-1.5 text-3xl font-medium tracking-[-0.045em]">从这里，直接进入你的站点。</h2>
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground">每个网站目录都是一个独立入口。栖屿负责发现和管理，Caddy 只在后台提供静态文件。</p>
+        </div>
+        <Link href="/files?path=sites" className="inline-flex h-9 w-fit items-center gap-1.5 rounded-lg bg-primary px-3.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/85">
+          <Upload className="size-4" />管理网页文件
+        </Link>
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">已发布的网站</p>
+            <p className="mt-1 text-xs text-muted-foreground">点击站点卡片即可打开首页。</p>
+          </div>
+          {!loading && <span className="rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 text-xs text-muted-foreground">{sites.length} 个站点</span>}
+        </div>
+
+        {loading ? <div className="flex min-h-44 items-center justify-center rounded-2xl border border-white/8 bg-white/[0.025] text-sm text-muted-foreground"><LoaderCircle className="mr-2 size-4 animate-spin" />正在读取站点…</div>
+          : payload?.error ? <EmptyState title="暂时无法读取网页目录" text={payload.error} />
+            : sites.length === 0 ? <EmptyState title="还没有可访问的网站" text="在网页发布目录新建一个文件夹，放入 index.html 后，它会自动出现在这里。" />
+              : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {sites.map((site) => <Link key={site.path} href={siteUrl(site.name)} className="group relative overflow-hidden rounded-2xl border border-white/8 bg-white/[0.025] p-5 transition hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/[0.055]">
+                  <div className="flex items-start justify-between">
+                    <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Globe2 className="size-5" /></div>
+                    <ArrowUpRight className="size-4 text-muted-foreground transition group-hover:text-primary" />
+                  </div>
+                  <h3 className="mt-7 truncate text-lg font-medium">{site.name}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">最近更新于 {site.modifiedAt}</p>
+                  <div className="mt-5 flex items-center gap-1.5 text-sm text-primary">打开网站 <ExternalLink className="size-3.5" /></div>
+                </Link>)}
+              </div>}
+      </section>
+
+      <section className="grid gap-3 md:grid-cols-3">
+        <Guide icon={FileCode2} title="一个目录，一个站点" text="在 sites 下建立目录，例如 home。" />
+        <Guide icon={Upload} title="放入首页文件" text="上传 index.html 与所需的 CSS、图片等资源。" />
+        <Guide icon={Code2} title="自动出现在这里" text="无需登记地址，刷新网页中心即可直接打开。" />
+      </section>
+    </div>
   </QiyuAppShell>;
 }
 
-function Step({ index, icon: Icon, title, text }: { index: string; icon: typeof FileCode2; title: string; text: string }) { return <div className="rounded-xl border border-white/8 bg-white/[0.025] p-5"><span className="text-[11px] font-medium tracking-[0.16em] text-primary">{index}</span><Icon className="mt-6 size-5 text-foreground" /><h3 className="mt-4 text-sm font-medium">{title}</h3><p className="mt-1.5 text-xs leading-5 text-muted-foreground">{text}</p></div>; }
+function EmptyState({ title, text }: { title: string; text: string }) {
+  return <div className="flex min-h-44 flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.018] px-6 text-center">
+    <div className="flex size-10 items-center justify-center rounded-xl bg-white/[0.04] text-primary"><Globe2 className="size-5" /></div>
+    <h3 className="mt-4 text-sm font-medium">{title}</h3>
+    <p className="mt-1.5 max-w-sm text-xs leading-5 text-muted-foreground">{text}</p>
+    <Link href="/files?path=sites" className="mt-4 text-sm text-primary hover:underline">管理网页文件</Link>
+  </div>;
+}
+
+function Guide({ icon: Icon, title, text }: { icon: typeof FileCode2; title: string; text: string }) {
+  return <div className="rounded-xl border border-white/8 bg-white/[0.025] p-5">
+    <Icon className="size-5 text-primary" />
+    <h3 className="mt-5 text-sm font-medium">{title}</h3>
+    <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{text}</p>
+  </div>;
+}
