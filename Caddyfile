@@ -1,0 +1,29 @@
+{
+  admin off
+  auto_https off
+}
+
+:80 {
+  encode zstd gzip
+
+  header {
+    X-Content-Type-Options nosniff
+    Referrer-Policy strict-origin-when-cross-origin
+    -Server
+  }
+
+  redir /jellyfin /jellyfin/ 308
+  handle /jellyfin/* {
+    reverse_proxy jellyfin:8096
+  }
+
+  redir /sites /sites/ 308
+  handle_path /sites/* {
+    root * /srv/sites
+    file_server browse
+  }
+
+  handle {
+    reverse_proxy portal:3000
+  }
+}
