@@ -49,6 +49,12 @@
 
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background: var(--background);
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in oklch, var(--primary) 24%, transparent);
 }
 
 :root {
@@ -155,29 +161,29 @@ html[data-theme='cloud'] {
 
 html[data-theme='dawn'] {
   color-scheme: light;
-  --background: oklch(0.976 0.016 82);
-  --foreground: oklch(0.29 0.035 49);
-  --card: oklch(0.997 0.005 82);
-  --card-foreground: oklch(0.29 0.035 49);
+  --background: oklch(0.978 0.018 82);
+  --foreground: oklch(0.27 0.038 49);
+  --card: oklch(0.996 0.006 82);
+  --card-foreground: oklch(0.27 0.038 49);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.29 0.035 49);
+  --popover-foreground: oklch(0.27 0.038 49);
   --primary: oklch(0.63 0.174 40);
   --primary-foreground: oklch(0.995 0.006 75);
   --secondary: oklch(0.94 0.026 79);
   --secondary-foreground: oklch(0.33 0.052 43);
   --muted: oklch(0.95 0.017 80);
-  --muted-foreground: oklch(0.52 0.041 52);
+  --muted-foreground: oklch(0.48 0.042 52);
   --accent: oklch(0.92 0.053 54);
   --accent-foreground: oklch(0.34 0.065 38);
   --border: oklch(0.8 0.032 72 / 72%);
   --input: oklch(0.8 0.032 72 / 72%);
   --ring: oklch(0.63 0.174 40);
-  --sidebar: oklch(0.95 0.026 77);
-  --sidebar-foreground: oklch(0.29 0.035 49);
+  --sidebar: oklch(0.946 0.03 77);
+  --sidebar-foreground: oklch(0.27 0.038 49);
   --sidebar-primary: oklch(0.63 0.174 40);
   --sidebar-primary-foreground: oklch(0.995 0.006 75);
   --sidebar-accent: oklch(0.92 0.053 54);
-  --sidebar-accent-foreground: oklch(0.29 0.035 49);
+  --sidebar-accent-foreground: oklch(0.27 0.038 49);
   --sidebar-border: oklch(0.8 0.032 72 / 72%);
   --sidebar-ring: oklch(0.63 0.174 40);
 }

@@ -38,7 +38,7 @@ export function LoginForm() {
       <div className="flex size-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary"><HardDrive className="size-6" /></div>
       <p className="mt-7 text-xs font-medium uppercase tracking-[0.24em] text-primary">Qiyu Private NAS</p>
       <h1 className="mt-2 text-3xl font-medium tracking-[-0.04em]">欢迎回到栖屿</h1>
-      <p className="mt-3 text-sm leading-6 text-muted-foreground">登录一次，即可管理文件、浏览影音并进入你的 NAS 空间。</p>
+      <p className="mt-3 text-sm leading-6 text-muted-foreground">登录一次，文件、影音、采集和网页管理都在这里。</p>
       <form onSubmit={submit} className="mt-8 space-y-4">
         <label className="block text-sm"><span className="mb-2 block text-muted-foreground">账号</span><input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" required className="w-full rounded-xl border border-border bg-background/65 px-3.5 py-3 outline-none transition placeholder:text-muted-foreground focus:border-primary/50 focus:ring-2 focus:ring-primary/15" placeholder="NAS 用户名" /></label>
         <label className="block text-sm"><span className="mb-2 block text-muted-foreground">密码</span><input value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required type="password" className="w-full rounded-xl border border-border bg-background/65 px-3.5 py-3 outline-none transition placeholder:text-muted-foreground focus:border-primary/50 focus:ring-2 focus:ring-primary/15" placeholder="NAS 密码" /></label>

@@ -41,7 +41,7 @@ export function QiyuAppShell({ active, eyebrow, title, children }: { active: Act
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[224px] flex-col border-r border-sidebar-border bg-sidebar px-3 py-4 lg:flex">
         <Brand />
         {nav}
-        <div className="mt-auto rounded-xl border border-white/7 bg-white/[0.025] p-3.5 text-xs leading-5 text-muted-foreground"><span className="mb-1.5 flex items-center gap-2 text-primary"><span className="size-1.5 rounded-full bg-primary" />私人网络</span>仅通过家庭内网与 Tailscale 访问。</div>
+        <div className="mt-auto rounded-xl border border-white/7 bg-white/[0.025] p-3.5 text-xs leading-5 text-muted-foreground"><span className="mb-1.5 flex items-center gap-2 text-primary"><span className="size-1.5 rounded-full bg-primary" />私人空间</span>仅你可通过内网或 Tailscale 访问。</div>
       </aside>
       {open ? <div className="fixed inset-0 z-50 lg:hidden"><button onClick={() => setOpen(false)} className="absolute inset-0 bg-black/55 backdrop-blur-sm" aria-label="关闭菜单遮罩" /><aside className="relative flex h-full w-[276px] flex-col border-r border-sidebar-border bg-sidebar p-4"><div className="flex items-center justify-between"><Brand /><button onClick={() => setOpen(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label="关闭菜单"><X className="size-5" /></button></div>{nav}</aside></div> : null}
       <div className="lg:pl-[224px]">
@@ -53,5 +53,5 @@ export function QiyuAppShell({ active, eyebrow, title, children }: { active: Act
 }
 
 function Brand() {
-  return <a href="/" className="flex items-center gap-3 px-2"><div className="flex size-9 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><HardDrive className="size-[18px]" /></div><div><p className="text-sm font-semibold tracking-[0.12em]">栖屿</p><p className="mt-0.5 text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Private NAS</p></div></a>;
+  return <a href="/" className="flex items-center gap-3 px-2"><div className="flex size-9 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><HardDrive className="size-[18px]" /></div><div><p className="text-sm font-semibold tracking-[0.12em]">栖屿</p><p className="mt-0.5 text-[9px] uppercase tracking-[0.2em] text-muted-foreground">YOUR PRIVATE NAS</p></div></a>;
 }

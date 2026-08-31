@@ -44,8 +44,8 @@ export function SitesCenter() {
       <section className="flex flex-col gap-4 border-b border-white/7 pb-6 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm text-primary">静态网页空间</p>
-          <h2 className="mt-1.5 text-3xl font-medium tracking-[-0.045em]">从这里，直接进入你的站点。</h2>
-          <p className="mt-2 max-w-xl text-sm text-muted-foreground">每个网站目录都是一个独立入口。栖屿负责发现和管理，Caddy 只在后台提供静态文件。</p>
+          <h2 className="mt-1.5 text-3xl font-medium tracking-[-0.045em]">把站点，也收进同一个入口。</h2>
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground">每个文件夹就是一个站点；放入 index.html 后，即可从这里直接打开。</p>
         </div>
         <Link href="/files?path=sites" className="inline-flex h-9 w-fit items-center gap-1.5 rounded-lg bg-primary px-3.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/85">
           <Upload className="size-4" />管理网页文件
@@ -55,8 +55,8 @@ export function SitesCenter() {
       <section>
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">已发布的网站</p>
-            <p className="mt-1 text-xs text-muted-foreground">点击站点卡片即可打开首页。</p>
+            <p className="text-sm font-medium">站点</p>
+            <p className="mt-1 text-xs text-muted-foreground">点击卡片，直接打开首页。</p>
           </div>
           {!loading && <span className="rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 text-xs text-muted-foreground">{sites.length} 个站点</span>}
         </div>
@@ -78,9 +78,9 @@ export function SitesCenter() {
       </section>
 
       <section className="grid gap-3 md:grid-cols-3">
-        <Guide icon={FileCode2} title="一个目录，一个站点" text="在 sites 下建立目录，例如 home。" />
-        <Guide icon={Upload} title="放入首页文件" text="上传 index.html 与所需的 CSS、图片等资源。" />
-        <Guide icon={Code2} title="自动出现在这里" text="无需登记地址，刷新网页中心即可直接打开。" />
+        <Guide icon={FileCode2} title="建立一个目录" text="在 sites 下新建文件夹，例如 home。" />
+        <Guide icon={Upload} title="放入首页文件" text="上传 index.html、CSS、图片等资源。" />
+        <Guide icon={Code2} title="从这里直接打开" text="无需配置地址，刷新后即可访问。" />
       </section>
     </div>
   </QiyuAppShell>;

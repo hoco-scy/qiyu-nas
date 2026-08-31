@@ -41,7 +41,7 @@ export function ThemeSwitcher() {
       return <button key={item.name} onClick={() => { setTheme(item.name); applyTheme(item.name); }} title={`切换到${item.label}主题`} aria-label={`切换到${item.label}主题`} aria-pressed={selected} className={`flex h-7 items-center gap-1.5 rounded-md px-1.5 text-[11px] transition ${selected ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>
         <span className="size-3.5 rounded-full border border-black/10 shadow-sm" style={{ background: item.swatch }} />
         <Icon className="size-3.5" />
-        <span className="hidden xl:inline">{item.label}</span>
+        <span className="hidden md:inline">{item.label}</span>
       </button>;
     })}
   </div>;
