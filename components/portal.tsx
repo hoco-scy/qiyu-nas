@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, ArrowUpRight, Film, FolderOpen, Gauge, HardDrive, Play, Plus, RefreshCw, Upload } from 'lucide-react';
+import { Activity, ArrowUpRight, Cpu, FolderOpen, HardDrive, MemoryStick, Play, Plus, RefreshCw, Timer, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { QiyuAppShell } from '@/components/qiyu-app-shell';
 import { Button } from '@/components/ui/button';
@@ -10,13 +10,14 @@ type NasStatus = {
   storage: { total: number; used: number; available: number; percent: number };
   files: number;
   videos: number;
-  load: number;
+  cpu: { percent: number; cores: number };
+  memory: { total: number; used: number; available: number; percent: number };
   uptime: number;
   recent: { name: string; path: string; size: number; updated: string }[];
 };
 
 const fallback: NasStatus = {
-  hostname: '栖屿 NAS', storage: { total: 0, used: 0, available: 0, percent: 0 }, files: 0, videos: 0, load: 0, uptime: 0, recent: [],
+  hostname: '栖屿 NAS', storage: { total: 0, used: 0, available: 0, percent: 0 }, files: 0, videos: 0, cpu: { percent: 0, cores: 0 }, memory: { total: 0, used: 0, available: 0, percent: 0 }, uptime: 0, recent: [],
 };
 
 export function Portal() {
@@ -44,10 +45,10 @@ export function Portal() {
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric icon={HardDrive} label="可用空间" value={formatBytes(status.storage.available)} note={`已用 ${status.storage.percent}%`} />
-        <Metric icon={FolderOpen} label="文件" value={status.files.toLocaleString('zh-CN')} note="栖屿数据目录" />
-        <Metric icon={Film} label="影音条目" value={status.videos.toLocaleString('zh-CN')} note="等待 Jellyfin 识别" />
-        <Metric icon={Gauge} label="系统负载" value={loading ? '—' : status.load.toFixed(2)} note={status.uptime ? `已运行 ${formatUptime(status.uptime)}` : '正在读取状态'} />
+        <Metric icon={Cpu} label="CPU" value={loading ? '—' : `${status.cpu.percent}%`} note={status.cpu.cores ? `${status.cpu.cores} 核 · 实时利用率` : '正在读取设备状态'} />
+        <Metric icon={MemoryStick} label="内存" value={loading ? '—' : `${status.memory.percent}%`} note={`${formatBytes(status.memory.used)} / ${formatBytes(status.memory.total)}`} />
+        <Metric icon={HardDrive} label="磁盘" value={loading ? '—' : `${status.storage.percent}%`} note={`${formatBytes(status.storage.used)} / ${formatBytes(status.storage.total)}`} />
+        <Metric icon={Timer} label="运行时间" value={status.uptime ? formatUptime(status.uptime) : '—'} note={status.hostname} />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
