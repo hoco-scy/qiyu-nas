@@ -45,10 +45,10 @@ export function Portal() {
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric icon={Cpu} label="CPU" value={loading ? '—' : `${status.cpu.percent}%`} note={status.cpu.cores ? `${status.cpu.cores} 核 · 实时利用率` : '正在读取设备状态'} />
-        <Metric icon={MemoryStick} label="内存" value={loading ? '—' : `${status.memory.percent}%`} note={`${formatBytes(status.memory.used)} / ${formatBytes(status.memory.total)}`} />
+        <Metric icon={Cpu} label="CPU" value={loading ? '—' : `${status.cpu.percent}%`} note={status.cpu.cores ? `${status.cpu.cores} 核 · 运行环境` : '正在读取运行状态'} />
+        <Metric icon={MemoryStick} label="内存" value={loading ? '—' : `${status.memory.percent}%`} note={`${formatBytes(status.memory.used)} / ${formatBytes(status.memory.total)} · 运行环境`} />
         <Metric icon={HardDrive} label="磁盘" value={loading ? '—' : `${status.storage.percent}%`} note={`${formatBytes(status.storage.used)} / ${formatBytes(status.storage.total)}`} />
-        <Metric icon={Timer} label="运行时间" value={status.uptime ? formatUptime(status.uptime) : '—'} note={status.hostname} />
+        <Metric icon={Timer} label="运行时间" value={status.uptime ? formatUptime(status.uptime) : '—'} note={`${status.hostname} · 运行环境`} />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
@@ -74,7 +74,7 @@ function QuickLink({ href, icon: Icon, title, note }: { href: string; icon: type
 
 function StorageCard({ status }: { status: NasStatus }) {
   const percent = Math.min(100, Math.max(0, status.storage.percent));
-  return <div className="rounded-2xl border border-white/8 bg-[#101c1b] p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-sm font-medium">系统盘</p><p className="mt-1 text-xs text-muted-foreground">{status.hostname}</p></div><span className="rounded-full bg-primary/10 px-2 py-1 text-[11px] text-primary">{percent}% 已用</span></div><div className="mt-7 h-2 overflow-hidden rounded-full bg-white/[0.07]"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.max(1, percent)}%` }} /></div><div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>{formatBytes(status.storage.used)} 已用</span><span>{formatBytes(status.storage.total)}</span></div></div>;
+  return <div className="rounded-2xl border border-white/8 bg-[#101c1b] p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-sm font-medium">栖屿数据盘</p><p className="mt-1 text-xs text-muted-foreground">{status.hostname}</p></div><span className="rounded-full bg-primary/10 px-2 py-1 text-[11px] text-primary">{percent}% 已用</span></div><div className="mt-7 h-2 overflow-hidden rounded-full bg-white/[0.07]"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.max(1, percent)}%` }} /></div><div className="mt-3 flex justify-between text-xs text-muted-foreground"><span>{formatBytes(status.storage.used)} 已用</span><span>{formatBytes(status.storage.total)}</span></div></div>;
 }
 
 function StatusRow({ label, value }: { label: string; value: string }) { return <div className="flex items-center text-sm"><span className="mr-3 size-2 rounded-full bg-primary" /><span className="text-muted-foreground">{label}</span><span className="ml-auto">{value}</span></div>; }

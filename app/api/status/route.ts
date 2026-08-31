@@ -1,4 +1,6 @@
+import { execFile } from 'node:child_process';
 import { readFile, readdir, stat, statfs } from 'node:fs/promises';
+import { promisify } from 'node:util';
 import os from 'node:os';
 import path from 'node:path';
 import { NextResponse } from 'next/server';
@@ -14,6 +16,7 @@ type RecentEntry = { name: string; path: string; size: number; mtimeMs: number; 
 type CpuSnapshot = { total: number; idle: number };
 
 let previousCpu: CpuSnapshot | null = null;
+const execFileAsync = promisify(execFile);
 
 function safeSystemMetric(read: () => number) {
   try {
@@ -74,6 +77,31 @@ async function inspectFiles() {
   return { files, videos, recent: recent.map(({ mtimeMs: _mtimeMs, ...entry }) => entry) };
 }
 
+async function storageUsage() {
+  try {
+    // `statfs().bsize` is misreported for some Docker Desktop shared mounts.
+    // POSIX df always reports these block counts in KiB, including on Linux NAS.
+    const { stdout } = await execFileAsync('df', ['-Pk', storageRoot]);
+    const line = stdout.trim().split('\n').at(-1);
+    const fields = line?.trim().split(/\s+/) || [];
+    const [totalBlocks, usedBlocks, availableBlocks] = fields.slice(-5, -2).map(Number);
+    if ([totalBlocks, usedBlocks, availableBlocks].every(Number.isFinite)) {
+      const total = totalBlocks * 1024;
+      const used = usedBlocks * 1024;
+      const available = availableBlocks * 1024;
+      return { total, used, available, percent: total ? Math.round((used / total) * 100) : 0 };
+    }
+  } catch {
+    // Fall back to Node's native filesystem data when df is unavailable.
+  }
+
+  const filesystem = await statfs(storageRoot);
+  const total = filesystem.blocks * filesystem.bsize;
+  const available = filesystem.bavail * filesystem.bsize;
+  const used = Math.max(0, total - filesystem.bfree * filesystem.bsize);
+  return { total, used, available, percent: total ? Math.round((used / total) * 100) : 0 };
+}
+
 function parseCpuSnapshot(statFile: string): CpuSnapshot | null {
   const line = statFile.split('\n').find((item) => item.startsWith('cpu '));
   if (!line) return null;
@@ -111,21 +139,13 @@ function calculateCpuPercent(earlier: CpuSnapshot, later: CpuSnapshot) {
 export async function GET() {
   if (!await isPortalAuthenticated()) return NextResponse.json({ error: '未登录' }, { status: 401 });
   try {
-    const [filesystem, content, cpuPercent] = await Promise.all([statfs(storageRoot), inspectFiles(), cpuUsage()]);
-    const total = filesystem.blocks * filesystem.bsize;
-    const available = filesystem.bavail * filesystem.bsize;
-    const used = Math.max(0, total - filesystem.bfree * filesystem.bsize);
+    const [storage, content, cpuPercent] = await Promise.all([storageUsage(), inspectFiles(), cpuUsage()]);
     const memoryTotal = safeSystemMetric(() => os.totalmem());
     const memoryAvailable = safeSystemMetric(() => os.freemem());
     const memoryUsed = Math.max(0, memoryTotal - memoryAvailable);
     return NextResponse.json({
       hostname: process.env.NAS_HOSTNAME || os.hostname(),
-      storage: {
-        total,
-        used,
-        available,
-        percent: total ? Math.round((used / total) * 100) : 0,
-      },
+      storage,
       files: content.files,
       videos: content.videos,
       recent: content.recent,
