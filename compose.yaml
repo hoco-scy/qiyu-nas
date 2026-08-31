@@ -27,7 +27,9 @@ services:
     environment:
       STORAGE_ROOT: /storage
       NAS_HOSTNAME: ${NAS_HOSTNAME:-qiyu-nas}
-      JELLYFIN_BASE_URL: http://jellyfin:8096/jellyfin
+      # Internal API calls use the private Docker address, not Caddy's
+      # browser-facing /jellyfin/ route.
+      JELLYFIN_BASE_URL: http://jellyfin:8096
       JELLYFIN_USERNAME: ${NAS_USERNAME}
       JELLYFIN_PASSWORD: ${NAS_PASSWORD}
       PORTAL_SESSION_SECRET: ${PORTAL_SESSION_SECRET}

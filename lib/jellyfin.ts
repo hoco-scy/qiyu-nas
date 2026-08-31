@@ -1,4 +1,6 @@
-const defaultBaseUrl = 'http://jellyfin:8096/jellyfin';
+// The portal calls Jellyfin over the private Docker network.  This is not the
+// public Caddy route, so it must not include the `/jellyfin` URL prefix.
+const defaultBaseUrl = 'http://jellyfin:8096';
 
 type JellyfinSession = { accessToken: string; userId: string; expiresAt: number };
 
@@ -27,6 +29,7 @@ type JellyfinView = {
 };
 
 let session: JellyfinSession | undefined;
+let bootstrapPromise: Promise<boolean> | undefined;
 
 function baseUrl() {
   return (process.env.JELLYFIN_BASE_URL || defaultBaseUrl).replace(/\/+$/, '');
@@ -38,16 +41,60 @@ function clientHeaders() {
   };
 }
 
-async function authenticate() {
-  const username = process.env.JELLYFIN_USERNAME;
-  const password = process.env.JELLYFIN_PASSWORD;
-  if (!username || !password) throw new Error('Jellyfin service credentials are not configured');
-  const response = await fetch(`${baseUrl()}/Users/AuthenticateByName`, {
+async function requestAuthentication(username: string, password: string) {
+  return fetch(`${baseUrl()}/Users/AuthenticateByName`, {
     method: 'POST',
     headers: { ...clientHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ Username: username, Pw: password }),
     cache: 'no-store',
   });
+}
+
+async function bootstrapJellyfin(username: string, password: string) {
+  const firstUser = await fetch(`${baseUrl()}/Startup/User`, {
+    headers: clientHeaders(),
+    cache: 'no-store',
+  });
+
+  // Jellyfin returns an authorization error here after its first-run wizard
+  // has finished. In that case it is an existing installation, not one the
+  // portal should modify.
+  if (!firstUser.ok) return false;
+
+  const setupHeaders = { ...clientHeaders(), 'Content-Type': 'application/json' };
+  const userResponse = await fetch(`${baseUrl()}/Startup/User`, {
+    method: 'POST',
+    headers: setupHeaders,
+    body: JSON.stringify({ Name: username, Password: password }),
+    cache: 'no-store',
+  });
+  if (!userResponse.ok) return false;
+
+  const completeResponse = await fetch(`${baseUrl()}/Startup/Complete`, {
+    method: 'POST',
+    headers: setupHeaders,
+    cache: 'no-store',
+  });
+  return completeResponse.ok;
+}
+
+async function ensureJellyfinBootstrapped(username: string, password: string) {
+  if (!bootstrapPromise) {
+    bootstrapPromise = bootstrapJellyfin(username, password)
+      .catch(() => false)
+      .finally(() => { bootstrapPromise = undefined; });
+  }
+  return bootstrapPromise;
+}
+
+async function authenticate() {
+  const username = process.env.JELLYFIN_USERNAME;
+  const password = process.env.JELLYFIN_PASSWORD;
+  if (!username || !password) throw new Error('Jellyfin service credentials are not configured');
+  let response = await requestAuthentication(username, password);
+  if (response.status === 401 && await ensureJellyfinBootstrapped(username, password)) {
+    response = await requestAuthentication(username, password);
+  }
   if (!response.ok) throw new Error(`Jellyfin authentication failed (${response.status})`);
   const payload = await response.json() as { AccessToken?: string; User?: { Id?: string } };
   if (!payload.AccessToken || !payload.User?.Id) throw new Error('Jellyfin returned an invalid session');
