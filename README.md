@@ -64,7 +64,7 @@ docker compose --env-file .env up -d --build
 
 ## 影音采集
 
-在“采集”页粘贴一个你有权保存的**公开** HTTP/HTTPS 媒体链接，选择视频（最高 1080p）或 MP3 音频，再选择保存到：
+在“采集”页粘贴一个你有权保存的**公开** HTTP/HTTPS 媒体链接，选择视频（默认最高 2K / 1440p）或 MP3 音频，再选择保存到：
 
 - `media/Inbox`：默认收集箱，适合先在文件中心检查、整理。
 - `media/Movies` / `media/Shows`：Jellyfin 会继续扫描；内容识别取决于文件命名和 Jellyfin 元数据匹配。
@@ -95,6 +95,7 @@ data/sites/my-tool/index.html
 | `PORTAL_COOKIE_SECURE` | 使用 HTTPS 入口时设为 `true`。 |
 | `NPM_REGISTRY` | 构建门户镜像时使用的 npm registry；默认官方源。 |
 | `COLLECTOR_MAX_FILESIZE` | 单个采集任务可写入的最大文件大小，默认 `5G`。 |
+| `COLLECTOR_MAX_HEIGHT` | 视频采集高度上限，默认 `1440`（2K/QHD）；允许 `144` 到 `2160`。 |
 
 项目默认直接以 HTTP 监听，适用于受信任的局域网或受访问控制的私有网络。若经公网、反向代理域名或不受信任网络访问，请为 Caddy 配置 HTTPS，并将 `PORTAL_COOKIE_SECURE=true`。
 

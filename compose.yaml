@@ -53,6 +53,7 @@ services:
       STORAGE_ROOT: /storage
       CONFIG_ROOT: /config
       COLLECTOR_MAX_FILESIZE: ${COLLECTOR_MAX_FILESIZE:-5G}
+      COLLECTOR_MAX_HEIGHT: ${COLLECTOR_MAX_HEIGHT:-1440}
     volumes:
       - ${NAS_ROOT:-./data}:/storage
       - ${CONFIG_ROOT:-./config}/collector:/config

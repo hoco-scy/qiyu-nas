@@ -211,7 +211,7 @@ export function CollectorCenter() {
                   onClick={() => setMode('video')}
                   icon={Film}
                   title="视频"
-                  note="最高 1080p · 自动合并"
+                  note="最高 2K（1440p）· 自动合并"
                 />
                 <ModeButton
                   active={mode === 'audio'}
@@ -405,7 +405,7 @@ function JobRow({ job }: { job: CollectorJob }) {
               {state.label}
             </span>
             <span className="text-[11px] text-muted-foreground">
-              {job.mode === 'audio' ? '音频 MP3' : '视频 ≤ 1080p'} · {target}
+              {job.mode === 'audio' ? '音频 MP3' : '视频 ≤ 2K'} · {target}
             </span>
           </div>
           <p

@@ -27,6 +27,10 @@ STORAGE_ROOT = Path(os.environ.get("STORAGE_ROOT", "/storage"))
 CONFIG_ROOT = Path(os.environ.get("CONFIG_ROOT", "/config"))
 STATE_PATH = CONFIG_ROOT / "jobs.json"
 MAX_FILESIZE = os.environ.get("COLLECTOR_MAX_FILESIZE", "5G")
+try:
+    MAX_VIDEO_HEIGHT = min(2160, max(144, int(os.environ.get("COLLECTOR_MAX_HEIGHT", "1440"))))
+except ValueError:
+    MAX_VIDEO_HEIGHT = 1440
 MAX_HISTORY = 40
 DESTINATIONS = {
     "movies": STORAGE_ROOT / "media" / "Movies",
@@ -193,7 +197,8 @@ def command_for(job: dict[str, Any]) -> list[str]:
     if job["mode"] == "audio":
         command.extend(["--extract-audio", "--audio-format", "mp3", "--audio-quality", "0"])
     else:
-        command.extend(["--format", "bv*[height<=1080]+ba/b[height<=1080]/b", "--merge-output-format", "mp4"])
+        format_selector = f"bv*[height<={MAX_VIDEO_HEIGHT}]+ba/b[height<={MAX_VIDEO_HEIGHT}]/best[height<={MAX_VIDEO_HEIGHT}]"
+        command.extend(["--format", format_selector, "--merge-output-format", "mp4"])
     command.append(job["url"])
     return command
 
