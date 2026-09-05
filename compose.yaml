@@ -5,7 +5,10 @@ services:
     image: caddy:2.11.4-alpine
     restart: unless-stopped
     ports:
-      - "${PORTAL_BIND_ADDRESS:-0.0.0.0}:${PORTAL_PORT:-8080}:80"
+      # Leave the host address unspecified so Docker publishes the portal on
+      # both IPv4 and IPv6. Pinning this to 0.0.0.0 makes a Tailscale IPv6
+      # address unreachable after the container is recreated.
+      - "${PORTAL_PORT:-8080}:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ${NAS_ROOT:-./data}/sites:/srv/sites:ro

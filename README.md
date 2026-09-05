@@ -133,7 +133,7 @@ data/sites/my-tool/index.html
 | `NAS_ROOT` | 文件、影音与静态站点数据位置；生产环境建议绝对路径。 |
 | `CONFIG_ROOT` | Caddy 与 Jellyfin 配置位置；请一起纳入备份。 |
 | `PUID` / `PGID` | 容器写入宿主机目录使用的 Linux UID/GID。 |
-| `PORTAL_BIND_ADDRESS` / `PORTAL_PORT` | 对外监听地址与端口；可绑定到某个 Tailscale 地址。 |
+| `PORTAL_PORT` | 对外监听端口，默认 `8080`；Docker 默认同时监听 IPv4 与 IPv6，适合局域网与 Tailscale IPv6 访问。 |
 | `PORTAL_COOKIE_SECURE` | 使用 HTTPS 入口时设为 `true`。 |
 | `JELLYFIN_USERNAME` / `JELLYFIN_PASSWORD` | 仅供门户服务端访问 Jellyfin 的内部服务凭据，不用于栖屿网页登录。 |
 | `JELLYFIN_BASE_URL` | Jellyfin 的 Docker 内网地址，默认 `http://jellyfin:8096`；若 Jellyfin 设置了 Base URL，需追加该前缀。 |
