@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>栖屿媒体嗅探</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header><span class="mark">⌁</span><div><strong>栖屿媒体嗅探</strong><p>只观察当前标签页</p></div></header>
+      <label>栖屿入口<input id="portal-url" type="url" placeholder="http://[NAS IPv6]:8080"></label>
+      <p id="page" class="page">正在读取当前标签页…</p>
+      <div class="actions"><button id="start" class="primary">开始观察</button><button id="stop" class="secondary">停止</button></div>
+      <p id="status" role="status" class="status"></p>
+      <section><div class="section-title"><strong>已发现的公开候选</strong><span id="count">0</span></div><div id="candidates" class="candidates"><p class="empty">播放页面内容后，候选会显示在这里。</p></div></section>
+      <footer>不会读取 Cookie、账号、页面正文或媒体内容。发送后仍需在栖屿确认并开始采集。</footer>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

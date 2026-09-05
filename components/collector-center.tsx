@@ -104,6 +104,31 @@ export function CollectorCenter() {
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const fragment = new URLSearchParams(window.location.hash.slice(1)).get('qiyu-capture');
+    if (!fragment) return;
+    try {
+      const base64 = fragment.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+      const bytes = Uint8Array.from(atob(padded), (character) => character.charCodeAt(0));
+      const value = JSON.parse(new TextDecoder().decode(bytes)) as { url?: unknown; referer?: unknown; mode?: unknown };
+      const media = new URL(typeof value.url === 'string' ? value.url : '');
+      if (!['http:', 'https:'].includes(media.protocol)) throw new Error('媒体链接无效');
+      const page = typeof value.referer === 'string' ? new URL(value.referer) : null;
+      if (page && !['http:', 'https:'].includes(page.protocol)) throw new Error('来源页面无效');
+      setUrl(media.toString());
+      setReferer(page?.toString() || null);
+      setMode(value.mode === 'audio' ? 'audio' : 'video');
+      setInspection(null);
+      setAcknowledged(false);
+      setMessage('已从浏览器嗅探扩展带入公开候选。请确认授权后，再手动开始采集。');
+    } catch {
+      setMessage('浏览器嗅探扩展传入的候选无效，未加入采集队列。');
+    } finally {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    }
+  }, []);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!url.trim()) {
