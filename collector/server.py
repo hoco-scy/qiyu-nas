@@ -52,6 +52,7 @@ PROGRESS = re.compile(r"\[download\]\s+([0-9]+(?:\.[0-9]+)?)%")
 OUTPUT_FILE = re.compile(r"^FILE=(.+)$")
 MAX_INSPECT_CANDIDATES = 16
 MAX_INSPECT_SECONDS = 14
+MIN_INSPECT_SETTLE_SECONDS = 7
 MAX_INSPECT_REQUESTS = 96
 MAX_INSPECT_HTML = 1_000_000
 MEDIA_EXTENSIONS = {
@@ -420,7 +421,7 @@ def inspect_page(payload: dict[str, Any]) -> dict[str, Any]:
                 chrome_binary(), "--headless", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--disable-crash-reporter",
                 "--disable-extensions", "--disable-background-networking", "--disable-component-update",
                 "--disable-sync", "--disable-default-apps", "--no-first-run", "--no-default-browser-check",
-                "--mute-audio", "--autoplay-policy=user-gesture-required", "--remote-debugging-address=127.0.0.1",
+                "--mute-audio", "--autoplay-policy=no-user-gesture-required", "--remote-debugging-address=127.0.0.1",
                 f"--remote-debugging-port={port}", f"--user-data-dir={profile}", "about:blank",
             ],
             stdout=subprocess.DEVNULL,
@@ -469,9 +470,10 @@ def inspect_page(payload: dict[str, Any]) -> dict[str, Any]:
             client.call("Fetch.enable", {"patterns": [{"urlPattern": "*", "requestStage": "Request"}]})
             client.call("Network.setBlockedURLs", {"urls": ["file://*", "ftp://*", "ws://*", "wss://*"]})
             client.send("Page.navigate", {"url": source})
+            navigation_started = time.monotonic()
             deadline = time.monotonic() + MAX_INSPECT_SECONDS
             while time.monotonic() < deadline:
-                if loaded_at and time.monotonic() - loaded_at >= 2:
+                if loaded_at and time.monotonic() - navigation_started >= MIN_INSPECT_SETTLE_SECONDS:
                     break
                 try:
                     handle(client.receive())
