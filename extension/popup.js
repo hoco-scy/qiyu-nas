@@ -44,7 +44,8 @@ function render(capture) {
       try {
         const target = new URL('/collect', normalizedPortal(portalInput.value));
         target.hash = `qiyu-capture=${pack({ url: candidate.url, referer: capture.pageUrl, mode: candidate.kind })}`;
-        await chrome.tabs.create({ url: target.toString() });
+        const result = await message({ type: 'open-transfer', target: target.toString() });
+        if (!result?.ok) throw new Error(result?.error || '无法打开栖屿。');
         status.textContent = '已在栖屿打开候选；请在门户中确认后再开始采集。';
       } catch (error) { status.textContent = error instanceof Error ? error.message : '无法打开栖屿。'; }
     });

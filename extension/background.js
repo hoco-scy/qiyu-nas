@@ -1,5 +1,7 @@
 const storageKey = 'captures';
+const transferKey = 'pendingTransfers';
 const maxCandidates = 24;
+const transferLifetimeMs = 15 * 60 * 1000;
 const mediaExtensions = new Map([
   ['3gp', 'video'], ['aac', 'audio'], ['flac', 'audio'], ['m3u8', 'video'], ['m4a', 'audio'],
   ['m4v', 'video'], ['mkv', 'video'], ['mov', 'video'], ['mp3', 'audio'], ['mp4', 'video'],
@@ -60,6 +62,53 @@ async function record(details, mime = '') {
   });
 }
 
+function transferTarget(value) {
+  const target = new URL(value);
+  if (!['http:', 'https:'].includes(target.protocol) || target.pathname !== '/collect' || !target.hash.startsWith('#qiyu-capture=')) {
+    throw new Error('带回栖屿的地址无效。');
+  }
+  return target;
+}
+
+async function openTransfer(value) {
+  const target = transferTarget(value);
+  const tab = await chrome.tabs.create({ url: target.toString(), active: true });
+  if (!tab.id) throw new Error('无法打开栖屿标签页。');
+  const { [transferKey]: transfers = {} } = await chrome.storage.session.get({ [transferKey]: {} });
+  transfers[tab.id] = { target: target.toString(), origin: target.origin, expiresAt: Date.now() + transferLifetimeMs };
+  await chrome.storage.session.set({ [transferKey]: transfers });
+  // `tabs.create` can begin navigating before the session write resolves.
+  // Check the tab once more so an immediate login redirect cannot race past
+  // the onUpdated listener.
+  const current = await chrome.tabs.get(tab.id);
+  if (current.url) await restoreTransferAfterLogin(tab.id, current.url);
+}
+
+async function restoreTransferAfterLogin(tabId, value) {
+  const { [transferKey]: transfers = {} } = await chrome.storage.session.get({ [transferKey]: {} });
+  const transfer = transfers[tabId];
+  if (!transfer) return;
+  const remove = () => {
+    delete transfers[tabId];
+    return chrome.storage.session.set({ [transferKey]: transfers });
+  };
+  if (transfer.expiresAt <= Date.now()) {
+    await remove();
+    return;
+  }
+  let current;
+  try { current = new URL(value); } catch { return; }
+  if (current.origin !== transfer.origin || current.pathname !== '/collect') return;
+  // A directly authenticated visit has already delivered the payload. Remove
+  // it before the portal client clears the URL fragment.
+  if (current.hash.startsWith('#qiyu-capture=')) {
+    await remove();
+    return;
+  }
+  await remove();
+  await chrome.tabs.update(tabId, { url: transfer.target });
+}
+
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => { void record(details); },
   { urls: ['http://*/*', 'https://*/*'] },
@@ -73,6 +122,18 @@ chrome.webRequest.onHeadersReceived.addListener(
   { urls: ['http://*/*', 'https://*/*'] },
   ['responseHeaders'],
 );
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.url) void restoreTransferAfterLogin(tabId, changeInfo.url);
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  void chrome.storage.session.get({ [transferKey]: {} }).then(({ [transferKey]: transfers = {} }) => {
+    if (!(tabId in transfers)) return;
+    delete transfers[tabId];
+    return chrome.storage.session.set({ [transferKey]: transfers });
+  });
+});
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === 'arm') {
@@ -89,6 +150,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
   if (message?.type === 'disarm') {
     void changeCaptures((captures) => { delete captures[message.tabId]; }).then(() => sendResponse({ ok: true }));
+    return true;
+  }
+  if (message?.type === 'open-transfer') {
+    void openTransfer(message.target)
+      .then(() => sendResponse({ ok: true }))
+      .catch((error) => sendResponse({ ok: false, error: error instanceof Error ? error.message : '无法打开栖屿。' }));
     return true;
   }
   return undefined;

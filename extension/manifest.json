@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "栖屿媒体嗅探",
   "description": "仅在你主动开启的当前标签页中观察公开媒体请求，并手动带回栖屿 NAS。",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "action": {
     "default_title": "栖屿媒体嗅探",
     "default_popup": "popup.html"
