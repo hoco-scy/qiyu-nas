@@ -139,7 +139,11 @@ case "$command_name" in
     if "$build"; then
       run_target "$target" up up -d --build --force-recreate
     else
-      run_target "$target" restart restart
+      # `docker compose restart` keeps the old container configuration and
+      # therefore ignores values newly written to .env (notably NAS_PASSWORD).
+      # Recreating is the lightweight configuration-apply path; it does not
+      # build images or remove volumes.
+      run_target "$target" up up -d --force-recreate
     fi
     ;;
   stop)

@@ -63,7 +63,10 @@ docker compose --env-file .env up -d --build
 # 启动所有栖屿核心服务（不重新构建镜像）
 ./scripts/qiyuctl.sh start core
 
-# 源码更新后重建并替换栖屿服务
+# 修改 .env 后应用新配置（包括门户密码），不重新构建镜像
+./scripts/qiyuctl.sh restart core
+
+# 源码更新后重建镜像并替换栖屿服务
 ./scripts/qiyuctl.sh restart core --build
 
 # 查看状态、跟踪日志、停止核心服务
