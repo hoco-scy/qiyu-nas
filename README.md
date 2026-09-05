@@ -55,6 +55,25 @@ docker compose --env-file .env up -d --build
 
 打开 `http://<主机地址>:8080`，使用 `.env` 中的 `NAS_USERNAME` / `NAS_PASSWORD` 登录。
 
+### 常用启动与维护命令
+
+仓库自带安全的控制脚本。它不会删除文件、Jellyfin 元数据、采集历史或任何 Docker volume；`stop` 仅停止容器。
+
+```bash
+# 启动所有栖屿核心服务（不重新构建镜像）
+./scripts/qiyuctl.sh start core
+
+# 源码更新后重建并替换栖屿服务
+./scripts/qiyuctl.sh restart core --build
+
+# 查看状态、跟踪日志、停止核心服务
+./scripts/qiyuctl.sh status core
+./scripts/qiyuctl.sh logs core --follow
+./scripts/qiyuctl.sh stop core
+```
+
+若同一台主机部署了梦琳求职雷达，可将目标改为 `radar`；省略目标或使用 `all` 会同时管理两套服务。实际安装路径不同于仓库根目录时，可用 `QIYU_COMPOSE_FILE`、`QIYU_ENV_FILE`、`RADAR_COMPOSE_FILE` 和 `RADAR_ENV_FILE` 指定相应路径。
+
 ### 首次配置 Jellyfin
 
 首次打开“影音”页时，门户会使用 `.env` 中的 `JELLYFIN_USERNAME` / `JELLYFIN_PASSWORD` 自动完成 Jellyfin 的首个内部服务账户初始化，并建立默认的视频库 `/media/Videos`，因此不需要第二次登录。该服务账户只供栖屿后端调用；栖屿门户登录始终只使用 `NAS_USERNAME` / `NAS_PASSWORD`。随后打开 `http://<主机地址>:8080/jellyfin/` 仅用于高级维护。
