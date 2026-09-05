@@ -27,6 +27,7 @@ export type CollectorInspection = {
   source: string;
   candidates: CollectorInspectionCandidate[];
   message: string;
+  hint?: string | null;
 };
 
 type CollectorPayload = {

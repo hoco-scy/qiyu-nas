@@ -51,8 +51,9 @@ DESTINATIONS = {
 PROGRESS = re.compile(r"\[download\]\s+([0-9]+(?:\.[0-9]+)?)%")
 OUTPUT_FILE = re.compile(r"^FILE=(.+)$")
 MAX_INSPECT_CANDIDATES = 16
-MAX_INSPECT_SECONDS = 14
+MAX_INSPECT_SECONDS = 18
 MIN_INSPECT_SETTLE_SECONDS = 7
+POST_PLAY_INSPECT_SECONDS = 4
 MAX_INSPECT_REQUESTS = 96
 MAX_INSPECT_HTML = 1_000_000
 MEDIA_EXTENSIONS = {
@@ -263,12 +264,14 @@ class DevToolsSocket:
         masked = bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
         self.connection.sendall(bytes(header) + masked)
 
-    def send(self, method: str, params: dict[str, Any] | None = None) -> int:
+    def send(self, method: str, params: dict[str, Any] | None = None, session_id: str | None = None) -> int:
         command_id = self.next_id
         self.next_id += 1
         payload = {"id": command_id, "method": method}
         if params:
             payload["params"] = params
+        if session_id:
+            payload["sessionId"] = session_id
         self._write_frame(0x1, json.dumps(payload, separators=(",", ":")).encode("utf-8"))
         return command_id
 
@@ -296,8 +299,8 @@ class DevToolsSocket:
             return self.receive()
         return json.loads(payload.decode("utf-8"))
 
-    def call(self, method: str, params: dict[str, Any] | None = None, handler: Any = None, timeout: float = 4) -> dict[str, Any]:
-        command_id = self.send(method, params)
+    def call(self, method: str, params: dict[str, Any] | None = None, handler: Any = None, timeout: float = 4, session_id: str | None = None) -> dict[str, Any]:
+        command_id = self.send(method, params, session_id)
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             try:
@@ -327,13 +330,12 @@ def browser_endpoint(port: int, process: subprocess.Popen[str]) -> str:
             raise RuntimeError("无头浏览器未能启动")
         try:
             connection = http.client.HTTPConnection("127.0.0.1", port, timeout=1)
-            connection.request("GET", "/json/list")
+            connection.request("GET", "/json/version")
             response = connection.getresponse()
-            targets = json.loads(response.read())
+            metadata = json.loads(response.read())
             connection.close()
-            for target in targets:
-                if target.get("type") == "page" and target.get("webSocketDebuggerUrl"):
-                    return str(target["webSocketDebuggerUrl"])
+            if metadata.get("webSocketDebuggerUrl"):
+                return str(metadata["webSocketDebuggerUrl"])
         except (OSError, ValueError, http.client.HTTPException):
             pass
         time.sleep(0.15)
@@ -434,12 +436,30 @@ def inspect_page(payload: dict[str, Any]) -> dict[str, Any]:
             client = DevToolsSocket(browser_endpoint(port, process))
             inspected_requests = 0
             loaded_at: float | None = None
+            playback_attempted_at: float | None = None
+            main_frame_url = source
+            main_session_id: str | None = None
+
+            def enable_network_capture(session_id: str) -> None:
+                # Each cross-origin iframe may use its own DevTools target.
+                # Capture it with the same allowlist as the top-level page;
+                # this observes ordinary public playback but never relaxes the
+                # SSRF, Cookie, credential, or DRM boundaries of the sniffer.
+                client.send("Network.enable", session_id=session_id)
+                client.send("Fetch.enable", {"patterns": [{"urlPattern": "*", "requestStage": "Request"}]}, session_id=session_id)
+                client.send("Network.setBlockedURLs", {"urls": ["file://*", "ftp://*", "ws://*", "wss://*"]}, session_id=session_id)
 
             def handle(message: dict[str, Any]) -> None:
-                nonlocal inspected_requests, loaded_at
+                nonlocal inspected_requests, loaded_at, main_frame_url
                 method = message.get("method")
                 params = message.get("params", {})
-                if method == "Fetch.requestPaused":
+                session_id = message.get("sessionId")
+                if method == "Target.attachedToTarget":
+                    child_session_id = params.get("sessionId")
+                    target_info = params.get("targetInfo", {})
+                    if isinstance(child_session_id, str) and target_info.get("type") in {"iframe", "page"}:
+                        enable_network_capture(child_session_id)
+                elif method == "Fetch.requestPaused":
                     request_id = params.get("requestId")
                     request = params.get("request", {})
                     url = request.get("url")
@@ -455,25 +475,64 @@ def inspect_page(payload: dict[str, Any]) -> dict[str, Any]:
                         blocked = True
                     if request_id:
                         if blocked:
-                            client.send("Fetch.failRequest", {"requestId": request_id, "errorReason": "BlockedByClient"})
+                            client.send(
+                                "Fetch.failRequest",
+                                {"requestId": request_id, "errorReason": "BlockedByClient"},
+                                session_id=session_id if isinstance(session_id, str) else None,
+                            )
                         else:
-                            client.send("Fetch.continueRequest", {"requestId": request_id})
+                            client.send(
+                                "Fetch.continueRequest",
+                                {"requestId": request_id},
+                                session_id=session_id if isinstance(session_id, str) else None,
+                            )
                 elif method == "Network.responseReceived":
                     response = params.get("response", {})
                     if isinstance(response.get("url"), str):
                         add_candidate(response["url"], "浏览器网络响应", str(response.get("mimeType") or ""))
-                elif method == "Page.loadEventFired":
+                elif method == "Page.loadEventFired" and session_id == main_session_id:
                     loaded_at = time.monotonic()
+                elif method == "Page.frameNavigated" and session_id == main_session_id:
+                    frame = params.get("frame", {})
+                    if not frame.get("parentId") and isinstance(frame.get("url"), str):
+                        main_frame_url = frame["url"]
 
-            client.call("Network.enable")
-            client.call("Page.enable", {"enableLifecycleEvents": True})
-            client.call("Fetch.enable", {"patterns": [{"urlPattern": "*", "requestStage": "Request"}]})
-            client.call("Network.setBlockedURLs", {"urls": ["file://*", "ftp://*", "ws://*", "wss://*"]})
-            client.send("Page.navigate", {"url": source})
+            target = client.call("Target.createTarget", {"url": "about:blank"}, handler=handle)
+            target_id = target.get("targetId")
+            if not isinstance(target_id, str):
+                raise RuntimeError("无头浏览器未能创建页面")
+            attached = client.call("Target.attachToTarget", {"targetId": target_id, "flatten": True}, handler=handle)
+            main_session_id = attached.get("sessionId")
+            if not isinstance(main_session_id, str):
+                raise RuntimeError("无头浏览器未能连接页面")
+            client.call("Page.enable", {"enableLifecycleEvents": True}, handler=handle, session_id=main_session_id)
+            enable_network_capture(main_session_id)
+            client.call(
+                "Target.setAutoAttach",
+                {"autoAttach": True, "waitForDebuggerOnStart": False, "flatten": True},
+                handler=handle,
+                session_id=main_session_id,
+            )
+            client.call("Page.navigate", {"url": source}, handler=handle, session_id=main_session_id)
             navigation_started = time.monotonic()
             deadline = time.monotonic() + MAX_INSPECT_SECONDS
             while time.monotonic() < deadline:
-                if loaded_at and time.monotonic() - navigation_started >= MIN_INSPECT_SETTLE_SECONDS:
+                now_monotonic = time.monotonic()
+                if loaded_at and not playback_attempted_at and now_monotonic - navigation_started >= MIN_INSPECT_SETTLE_SECONDS:
+                    # This only asks native HTML5 media elements already on the
+                    # public page to play. It neither clicks arbitrary page UI
+                    # nor provides a login, Cookie, token or DRM workaround.
+                    client.call(
+                        "Runtime.evaluate",
+                        {
+                            "expression": "(() => { for (const item of document.querySelectorAll('video,audio')) { try { item.muted = true; void item.play(); } catch (_) {} } return true; })()",
+                            "returnByValue": True,
+                        },
+                        handler=handle,
+                        session_id=main_session_id,
+                    )
+                    playback_attempted_at = time.monotonic()
+                if playback_attempted_at and time.monotonic() - playback_attempted_at >= POST_PLAY_INSPECT_SECONDS:
                     break
                 try:
                     handle(client.receive())
@@ -481,10 +540,23 @@ def inspect_page(payload: dict[str, Any]) -> dict[str, Any]:
                     continue
             result = client.call(
                 "Runtime.evaluate",
-                {"expression": f"document.documentElement ? document.documentElement.outerHTML.slice(0, {MAX_INSPECT_HTML}) : ''", "returnByValue": True},
+                {
+                    "expression": (
+                        "(() => ({"
+                        f"html: document.documentElement ? document.documentElement.outerHTML.slice(0, {MAX_INSPECT_HTML}) : '',"
+                        "url: location.href,"
+                        "frames: document.querySelectorAll('iframe').length"
+                        "}))()"
+                    ),
+                    "returnByValue": True,
+                },
                 handler=handle,
+                session_id=main_session_id,
             )
-            document = result.get("result", {}).get("value", "")
+            document_result = result.get("result", {}).get("value", {})
+            document = document_result.get("html", "") if isinstance(document_result, dict) else ""
+            final_url = document_result.get("url", main_frame_url) if isinstance(document_result, dict) else main_frame_url
+            frame_count = document_result.get("frames", 0) if isinstance(document_result, dict) else 0
             if isinstance(document, str):
                 parser = MediaMarkupParser()
                 try:
@@ -511,11 +583,19 @@ def inspect_page(payload: dict[str, Any]) -> dict[str, Any]:
                 process.kill()
                 process.wait(timeout=3)
 
-    message = (
-        f"已发现 {len(candidates)} 个可直接下载的公开媒体候选。选择一个后再加入采集队列。"
-        if candidates else "该网页没有向受限浏览器公开可直接下载的媒体地址。常见原因包括播放器接口、登录态、Cookie、短时令牌或 DRM；栖屿不会尝试绕过这些限制。"
-    )
-    return {"source": source, "candidates": candidates, "message": message}
+    if candidates:
+        message = f"已发现 {len(candidates)} 个可直接下载的公开媒体候选。选择一个后再加入采集队列。"
+        hint = None
+    elif final_url == "about:blank":
+        message = "该站点在无头浏览器中跳转到了空白页，未公开可采集的媒体请求。"
+        hint = "这通常是网站的自动化防护。栖屿不会规避它；若你在自己的浏览器中能正常播放有权保存的公开内容，可用可选的浏览器扩展在实际播放后带回候选链接。"
+    elif frame_count:
+        message = "页面把播放器放在嵌入式框架中，但本次没有公开可下载的媒体请求。"
+        hint = "若你在自己的浏览器中实际播放后出现公开的直连媒体请求，可用可选的浏览器扩展观察当前标签页，再手动带回候选链接。"
+    else:
+        message = "该网页没有向受限浏览器公开可直接下载的媒体地址。"
+        hint = "可能是播放器接口、登录态、Cookie、短时令牌或 DRM 导致；栖屿不会尝试绕过这些限制。"
+    return {"source": source, "candidates": candidates, "message": message, "hint": hint}
 
 
 def selection(value: Any, available: dict[str, Path], label: str) -> str:

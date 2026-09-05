@@ -302,8 +302,12 @@ export function CollectorCenter() {
                 <div className="mt-4 rounded-xl border border-border bg-muted/45 p-3.5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium">发现公开媒体资源</p>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">选择一个候选资源后，再点击“开始采集”。短时链接可能会过期。</p>
+                      <p className="text-sm font-medium">{inspection.candidates.length ? '发现公开媒体资源' : '未发现可直接采集的公开媒体'}</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        {inspection.candidates.length
+                          ? '选择一个候选资源后，再点击“开始采集”。短时链接可能会过期。'
+                          : inspection.hint || '该页面没有公开可直接下载的媒体地址。'}
+                      </p>
                     </div>
                     <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] text-primary">{inspection.candidates.length} 个候选</span>
                   </div>
