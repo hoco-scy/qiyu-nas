@@ -246,6 +246,15 @@ export function CollectorCenter() {
                 autoComplete="url"
                 className="mt-2 h-10 border-border bg-background/65"
               />
+              <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-border bg-muted/50 p-3 text-xs leading-5 text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={acknowledged}
+                  onChange={(event) => setAcknowledged(event.target.checked)}
+                  className="mt-0.5 size-3.5 accent-[var(--primary)]"
+                />
+                <span>我确认有权查看和保存这项公开内容。</span>
+              </label>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <Button
                   type="button"
@@ -259,6 +268,11 @@ export function CollectorCenter() {
                 </Button>
                 <span className="text-xs text-muted-foreground">无头浏览器只使用临时空白配置，不读取 Cookie，也不会自动下载。</span>
               </div>
+              {message ? (
+                <p role="status" className="mt-3 rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                  {message}
+                </p>
+              ) : null}
               {inspection ? (
                 <div className="mt-4 rounded-xl border border-border bg-muted/45 p-3.5">
                   <div className="flex items-center justify-between gap-3">
@@ -305,17 +319,6 @@ export function CollectorCenter() {
               <p className="font-medium">按类型自动归档</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">视频保存到 <code>media/Videos</code>，音频保存到 <code>media/Audio</code>。之后可在文件中心按视频、图片、音频筛选。</p>
             </div>
-            <label className="mt-5 flex cursor-pointer items-start gap-2.5 rounded-xl border border-border bg-muted/50 p-3 text-xs leading-5 text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={acknowledged}
-                onChange={(event) => setAcknowledged(event.target.checked)}
-                className="mt-0.5 size-3.5 accent-[var(--primary)]"
-              />
-              <span>
-                我确认有权保存这项公开内容。
-              </span>
-            </label>
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <Button
                 type="submit"
@@ -355,19 +358,6 @@ export function CollectorCenter() {
             </a>
           </aside>
         </section>
-
-        {message ? (
-          <div className="flex items-center justify-between rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
-            <span>{message}</span>
-            <button
-              onClick={() => setMessage('')}
-              className="rounded p-1 text-muted-foreground hover:bg-background hover:text-foreground"
-              aria-label="关闭提示"
-            >
-              ×
-            </button>
-          </div>
-        ) : null}
 
         <section className="rounded-2xl border border-border bg-card/60">
           <div className="flex items-center justify-between border-b border-border px-5 py-4 sm:px-6">

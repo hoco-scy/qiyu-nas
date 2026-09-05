@@ -511,7 +511,7 @@ def inspect_page(payload: dict[str, Any]) -> dict[str, Any]:
 
     message = (
         f"已发现 {len(candidates)} 个可直接下载的公开媒体候选。选择一个后再加入采集队列。"
-        if candidates else "未捕获到可直接下载的公开媒体资源；需要登录、Cookie、短时令牌或 DRM 的内容不会被嗅探。"
+        if candidates else "该网页没有向受限浏览器公开可直接下载的媒体地址。常见原因包括播放器接口、登录态、Cookie、短时令牌或 DRM；栖屿不会尝试绕过这些限制。"
     )
     return {"source": source, "candidates": candidates, "message": message}
 
