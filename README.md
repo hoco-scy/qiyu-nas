@@ -9,7 +9,7 @@
 - 栖屿文件中心：上传、下载、重命名、移动、删除和新建目录
 - 浏览器预览：图片、PDF、常见浏览器音视频、Markdown、Excel（`.xlsx`）、Word（`.docx`），以及 TXT/CSV/JSON/YAML/XML/配置和常见代码源码
 - 栖屿影音前台：通过 Jellyfin 扫描媒体、读取元数据和流式播放，无需在门户中二次登录
-- 栖屿影音采集：粘贴可解析的公开链接，后台队列通过 yt-dlp + ffmpeg 保存为视频或 MP3；服务没有宿主机端口，也不读取浏览器 Cookie
+- 栖屿影音采集：粘贴可解析的公开链接，后台队列通过 yt-dlp + ffmpeg 保存为视频或 MP3；可用临时无头浏览器嗅探网页已加载的公开媒体请求；服务没有宿主机端口，也不读取浏览器 Cookie
 - 静态站点发布：把网页文件放入 `sites/<站点名>/`，通过 `/sites/<站点名>/` 访问
 - 单个门户会话：文件和影音 API 都由栖屿会话保护
 - Docker Compose 一键部署；数据与配置都落在宿主机目录中
@@ -21,7 +21,7 @@
   │
   └─ Caddy :8080 ── 栖屿门户（Next.js） ── data/{files,media,sites}
                     │              │
-                    │              └─ yt-dlp 采集器（仅 Docker 内网、单任务队列）
+                    │              └─ yt-dlp + Chromium 采集器（仅 Docker 内网、单任务队列）
                     └─ Jellyfin（扫描、元数据、流媒体）
 ```
 
@@ -77,6 +77,14 @@ docker compose --env-file .env up -d --build
 
 网站规则会变化，请定期重建或更新 `collector` 镜像以取得新版 yt-dlp。请只保存你拥有版权、授权或合法可保存的内容，并遵守来源平台的条款；该功能不用于绕过访问控制或 DRM。
 
+### 资源嗅探
+
+对于仅粘贴网页地址的情况，可先点击“嗅探网页资源”。采集器会启动一次性的 Chromium 空白用户目录，等待网页加载后，从已渲染 DOM 和网络响应中提取公开的直连视频、音频、HLS/DASH 候选链接。选择候选项后才会交给 yt-dlp 入队下载；嗅探本身不会自动保存文件。
+
+- 嗅探浏览器没有登录态、扩展或 Cookie，不读取你的桌面浏览器资料。
+- 它会拦截并拒绝本机、局域网、保留地址、`file:`、FTP 和 WebSocket 请求；每次运行有请求数、候选数与时间上限。
+- 仅适用于你有权保存的公开、非 DRM 内容。需要登录、Cookie、时效令牌或 DRM 的内容可能无法出现或无法下载，栖屿不会尝试绕过这些限制。
+
 ## 发布自己的网页
 
 在 `data/sites/` 下创建站点目录并放入 `index.html`：
@@ -102,6 +110,8 @@ data/sites/my-tool/index.html
 | `NPM_REGISTRY` | 构建门户镜像时使用的 npm registry；默认官方源。 |
 | `COLLECTOR_MAX_FILESIZE` | 单个采集任务可写入的最大文件大小，默认 `10G`。 |
 | `COLLECTOR_MAX_HEIGHT` | 视频采集高度上限，默认 `1440`（2K/QHD）；允许 `144` 到 `2160`。 |
+| `COLLECTOR_BASE` | 采集器构建基础镜像，默认 `alpine:3.22`；离线或受限网络可指定已加载的兼容镜像。 |
+| `COLLECTOR_EXTRA_CA_CERTIFICATE_B64` | 可选的额外受信任根证书 Base64 值，仅在受管网络中构建采集器时使用。 |
 
 项目默认直接以 HTTP 监听，适用于受信任的局域网或受访问控制的私有网络。若经公网、反向代理域名或不受信任网络访问，请为 Caddy 配置 HTTPS，并将 `PORTAL_COOKIE_SECURE=true`。
 

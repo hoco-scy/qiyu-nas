@@ -17,17 +17,34 @@ export type CollectorJob = {
   files: string[];
 };
 
-type CollectorPayload = { jobs?: CollectorJob[]; job?: CollectorJob; error?: string };
+export type CollectorInspectionCandidate = {
+  url: string;
+  kind: CollectorMode;
+  label: string;
+};
+
+export type CollectorInspection = {
+  source: string;
+  candidates: CollectorInspectionCandidate[];
+  message: string;
+};
+
+type CollectorPayload = {
+  jobs?: CollectorJob[];
+  job?: CollectorJob;
+  inspection?: CollectorInspection;
+  error?: string;
+};
 
 function collectorBaseUrl() {
   return (process.env.COLLECTOR_BASE_URL || 'http://collector:9090').replace(/\/+$/, '');
 }
 
-export async function collectorRequest(path: string, init: RequestInit = {}) {
+export async function collectorRequest(path: string, init: RequestInit = {}, timeout = 10_000) {
   const response = await fetch(`${collectorBaseUrl()}${path}`, {
     ...init,
     cache: 'no-store',
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(timeout),
   });
   const payload = await response.json().catch(() => ({ error: '采集服务返回了无效响应' })) as CollectorPayload;
   return { response, payload };

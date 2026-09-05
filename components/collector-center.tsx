@@ -11,6 +11,7 @@ import {
   Link2,
   LoaderCircle,
   RefreshCw,
+  Search,
   ShieldCheck,
 } from 'lucide-react';
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
@@ -19,12 +20,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type {
   CollectorJob,
+  CollectorInspection,
+  CollectorInspectionCandidate,
   CollectorMode,
 } from '@/lib/collector';
 
 type CollectorPayload = {
   jobs?: CollectorJob[];
   job?: CollectorJob;
+  inspection?: CollectorInspection;
   error?: string;
 };
 
@@ -71,9 +75,12 @@ export function CollectorCenter() {
   const [url, setUrl] = useState('');
   const [mode, setMode] = useState<CollectorMode>('video');
   const [acknowledged, setAcknowledged] = useState(false);
+  const [inspection, setInspection] = useState<CollectorInspection | null>(null);
+  const [referer, setReferer] = useState<string | null>(null);
   const [jobs, setJobs] = useState<CollectorJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [inspecting, setInspecting] = useState(false);
   const [message, setMessage] = useState('');
 
   async function load(showError = false) {
@@ -117,6 +124,7 @@ export function CollectorCenter() {
           url: url.trim(),
           mode,
           acknowledged,
+          referer: referer || undefined,
         }),
       });
       const payload = (await response.json()) as CollectorPayload;
@@ -130,6 +138,8 @@ export function CollectorCenter() {
           : current,
       );
       setUrl('');
+      setInspection(null);
+      setReferer(null);
       setAcknowledged(false);
       setMessage('已加入采集队列。');
     } catch (error) {
@@ -137,6 +147,41 @@ export function CollectorCenter() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function inspect() {
+    if (!url.trim()) {
+      setMessage('请先粘贴一个公开网页链接。');
+      return;
+    }
+    if (!acknowledged) {
+      setMessage('请先确认你拥有查看和保存该公开内容的权利。');
+      return;
+    }
+    setInspecting(true);
+    setMessage('');
+    try {
+      const response = await fetch('/api/collector/inspect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url.trim(), acknowledged }),
+      });
+      const payload = (await response.json()) as CollectorPayload;
+      if (!response.ok || !payload.inspection) throw new Error(payload.error || '资源嗅探没有返回结果');
+      setInspection(payload.inspection);
+      setMessage(payload.inspection.message);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '资源嗅探没有完成');
+    } finally {
+      setInspecting(false);
+    }
+  }
+
+  function useCandidate(candidate: CollectorInspectionCandidate) {
+    setUrl(candidate.url);
+    setMode(candidate.kind);
+    setReferer(inspection?.source || null);
+    setMessage(`已选用${candidate.kind === 'audio' ? '音频' : '视频'}资源；确认后即可加入采集队列。`);
   }
 
   const activeJobs = useMemo(
@@ -180,7 +225,7 @@ export function CollectorCenter() {
               <div>
                 <h3 className="text-base font-medium">添加链接</h3>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  支持 yt-dlp 可识别的公开链接，不需要额外登录。
+                  可直接采集 yt-dlp 支持的公开链接，也可先嗅探网页中的公开媒体请求。
                 </p>
               </div>
             </div>
@@ -192,11 +237,50 @@ export function CollectorCenter() {
                 id="collector-url"
                 type="url"
                 value={url}
-                onChange={(event) => setUrl(event.target.value)}
+                onChange={(event) => {
+                  setUrl(event.target.value);
+                  setInspection(null);
+                  setReferer(null);
+                }}
                 placeholder="https://example.com/video"
                 autoComplete="url"
                 className="mt-2 h-10 border-border bg-background/65"
               />
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void inspect()}
+                  disabled={inspecting || submitting}
+                  className="rounded-lg border-border bg-card/65"
+                >
+                  {inspecting ? <LoaderCircle className="size-4 animate-spin" /> : <Search className="size-4" />}
+                  {inspecting ? '正在嗅探…' : '嗅探网页资源'}
+                </Button>
+                <span className="text-xs text-muted-foreground">无头浏览器只使用临时空白配置，不读取 Cookie，也不会自动下载。</span>
+              </div>
+              {inspection ? (
+                <div className="mt-4 rounded-xl border border-border bg-muted/45 p-3.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium">发现公开媒体资源</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">选择一个候选资源后，再点击“开始采集”。短时链接可能会过期。</p>
+                    </div>
+                    <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] text-primary">{inspection.candidates.length} 个候选</span>
+                  </div>
+                  {inspection.candidates.length ? (
+                    <div className="mt-3 grid gap-2">
+                      {inspection.candidates.map((candidate) => <button key={candidate.url} type="button" onClick={() => useCandidate(candidate)} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-border bg-background/55 px-3 py-2.5 text-left transition hover:border-primary/40 hover:bg-primary/[0.06]">
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium">{candidate.kind === 'audio' ? '音频资源' : '视频资源'} <span className="font-normal text-muted-foreground">· {candidate.label}</span></span>
+                          <span className="mt-0.5 block truncate text-xs text-muted-foreground">{hostFor(candidate.url)}</span>
+                        </span>
+                        <span className="shrink-0 text-xs text-primary">选用</span>
+                      </button>)}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
             <div className="mt-5">
               <p className="text-sm font-medium">保存形式</p>
@@ -258,7 +342,8 @@ export function CollectorCenter() {
             <h3 className="mt-5 text-base font-medium">只在你的空间里运行</h3>
             <ul className="mt-3 space-y-3 text-sm leading-6 text-muted-foreground">
               <li>采集服务不对外开放，只能从已登录的栖屿使用。</li>
-              <li>不读取浏览器账号、Cookie 或私有链接。</li>
+              <li>嗅探器使用临时浏览器，不读取账号、Cookie 或私有链接。</li>
+              <li>仅捕获公开、非 DRM 的直接媒体请求；不会绕过访问控制。</li>
               <li>完成后可继续在文件中心整理和播放。</li>
             </ul>
             <a

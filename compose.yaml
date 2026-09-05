@@ -54,6 +54,9 @@ services:
   collector:
     build:
       context: ./collector
+      args:
+        COLLECTOR_BASE: ${COLLECTOR_BASE:-alpine:3.22}
+        EXTRA_CA_CERTIFICATE_B64: ${COLLECTOR_EXTRA_CA_CERTIFICATE_B64:-}
     restart: unless-stopped
     environment:
       STORAGE_ROOT: /storage
@@ -64,6 +67,12 @@ services:
       - ${NAS_ROOT:-./data}:/storage
       - ${CONFIG_ROOT:-./config}/collector:/config
     user: "${PUID:-1000}:${PGID:-1000}"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    shm_size: 256mb
     expose:
       - "9090"
     networks:
