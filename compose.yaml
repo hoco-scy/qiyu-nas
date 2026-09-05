@@ -27,12 +27,18 @@ services:
     environment:
       STORAGE_ROOT: /storage
       NAS_HOSTNAME: ${NAS_HOSTNAME:-qiyu-nas}
+      # Browser-facing Qiyu login only. These are separate from the private
+      # Jellyfin service credentials below.
+      NAS_USERNAME: ${NAS_USERNAME}
+      NAS_PASSWORD: ${NAS_PASSWORD}
       COLLECTOR_BASE_URL: http://collector:9090
-      # Internal API calls use the private Docker address, not Caddy's
-      # browser-facing /jellyfin/ route.
-      JELLYFIN_BASE_URL: http://jellyfin:8096
-      JELLYFIN_USERNAME: ${NAS_USERNAME}
-      JELLYFIN_PASSWORD: ${NAS_PASSWORD}
+      # Internal API calls stay on Docker's private network. Override this
+      # when Jellyfin itself has a Base URL, for example /jellyfin.
+      JELLYFIN_BASE_URL: ${JELLYFIN_BASE_URL:-http://jellyfin:8096}
+      # A private service account used only by the portal's server-side
+      # Jellyfin API client. It is intentionally separate from NAS_*.
+      JELLYFIN_USERNAME: ${JELLYFIN_USERNAME}
+      JELLYFIN_PASSWORD: ${JELLYFIN_PASSWORD}
       PORTAL_SESSION_SECRET: ${PORTAL_SESSION_SECRET}
       PORTAL_COOKIE_SECURE: ${PORTAL_COOKIE_SECURE:-false}
     volumes:

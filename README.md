@@ -37,10 +37,11 @@ cd qiyu-nas
 cp .env.example .env
 ```
 
-编辑 `.env`，至少替换以下两项：
+编辑 `.env`，至少替换门户登录密码、内部 Jellyfin 服务密码和会话密钥：
 
 ```dotenv
 NAS_PASSWORD=换成强密码
+JELLYFIN_PASSWORD=换成另一段强密码
 PORTAL_SESSION_SECRET=换成 openssl rand -hex 32 的输出
 ```
 
@@ -56,7 +57,9 @@ docker compose --env-file .env up -d --build
 
 ### 首次配置 Jellyfin
 
-首次打开“影音”页时，门户会使用 `.env` 中的账号自动完成 Jellyfin 的首个管理员账户初始化，并建立默认的视频库 `/media/Videos`，因此不需要第二次登录。随后打开 `http://<主机地址>:8080/jellyfin/` 仅用于高级维护。
+首次打开“影音”页时，门户会使用 `.env` 中的 `JELLYFIN_USERNAME` / `JELLYFIN_PASSWORD` 自动完成 Jellyfin 的首个内部服务账户初始化，并建立默认的视频库 `/media/Videos`，因此不需要第二次登录。该服务账户只供栖屿后端调用；栖屿门户登录始终只使用 `NAS_USERNAME` / `NAS_PASSWORD`。随后打开 `http://<主机地址>:8080/jellyfin/` 仅用于高级维护。
+
+对已有部署，先将当前可登录 Jellyfin 的账号填写到 `JELLYFIN_USERNAME` / `JELLYFIN_PASSWORD`，再更新门户。此后修改栖屿 `NAS_PASSWORD` 不会影响影音引擎；需要修改 Jellyfin 服务账户时则单独在 Jellyfin 与这两个变量中同步更新。
 
 将视频放入 `/media/Videos` 即可；不需要先按电影或剧集分类。不要在 Jellyfin 网络设置中设置 Base URL；Caddy 会负责 `/jellyfin/` 的反向代理。
 
@@ -94,6 +97,8 @@ data/sites/my-tool/index.html
 | `PUID` / `PGID` | 容器写入宿主机目录使用的 Linux UID/GID。 |
 | `PORTAL_BIND_ADDRESS` / `PORTAL_PORT` | 对外监听地址与端口；可绑定到某个 Tailscale 地址。 |
 | `PORTAL_COOKIE_SECURE` | 使用 HTTPS 入口时设为 `true`。 |
+| `JELLYFIN_USERNAME` / `JELLYFIN_PASSWORD` | 仅供门户服务端访问 Jellyfin 的内部服务凭据，不用于栖屿网页登录。 |
+| `JELLYFIN_BASE_URL` | Jellyfin 的 Docker 内网地址，默认 `http://jellyfin:8096`；若 Jellyfin 设置了 Base URL，需追加该前缀。 |
 | `NPM_REGISTRY` | 构建门户镜像时使用的 npm registry；默认官方源。 |
 | `COLLECTOR_MAX_FILESIZE` | 单个采集任务可写入的最大文件大小，默认 `10G`。 |
 | `COLLECTOR_MAX_HEIGHT` | 视频采集高度上限，默认 `1440`（2K/QHD）；允许 `144` 到 `2160`。 |

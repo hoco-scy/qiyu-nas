@@ -34,6 +34,7 @@ type JellyfinVirtualFolder = {
 
 let session: JellyfinSession | undefined;
 let bootstrapPromise: Promise<boolean> | undefined;
+let authenticationPromise: Promise<JellyfinSession> | undefined;
 
 function baseUrl() {
   return (process.env.JELLYFIN_BASE_URL || defaultBaseUrl).replace(/\/+$/, '');
@@ -131,14 +132,18 @@ async function authenticate() {
   if (!response.ok) throw new Error(`Jellyfin authentication failed (${response.status})`);
   const payload = await response.json() as { AccessToken?: string; User?: { Id?: string } };
   if (!payload.AccessToken || !payload.User?.Id) throw new Error('Jellyfin returned an invalid session');
-  session = { accessToken: payload.AccessToken, userId: payload.User.Id, expiresAt: Date.now() + 45 * 60 * 1000 };
-  await createDefaultLibraries(session);
-  return session;
+  const activeSession = { accessToken: payload.AccessToken, userId: payload.User.Id, expiresAt: Date.now() + 45 * 60 * 1000 };
+  session = activeSession;
+  await createDefaultLibraries(activeSession);
+  return activeSession;
 }
 
 async function currentSession(force = false) {
   if (!force && session && session.expiresAt > Date.now()) return session;
-  return authenticate();
+  if (!authenticationPromise) {
+    authenticationPromise = authenticate().finally(() => { authenticationPromise = undefined; });
+  }
+  return authenticationPromise;
 }
 
 export async function jellyfinFetch(endpoint: string, init: RequestInit = {}, retry = true) {

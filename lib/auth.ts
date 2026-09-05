@@ -27,8 +27,11 @@ function constantTimeEqual(left: string, right: string) {
 }
 
 export function credentialsAreValid(username: unknown, password: unknown) {
-  const expectedUsername = process.env.JELLYFIN_USERNAME;
-  const expectedPassword = process.env.JELLYFIN_PASSWORD;
+  // Portal authentication is deliberately independent from the internal
+  // Jellyfin service account. The latter is only used by server-side media
+  // requests and must never decide which credentials unlock Qiyu itself.
+  const expectedUsername = process.env.NAS_USERNAME;
+  const expectedPassword = process.env.NAS_PASSWORD;
   if (!expectedUsername || !expectedPassword || typeof username !== 'string' || typeof password !== 'string') return false;
   return constantTimeEqual(username, expectedUsername) && constantTimeEqual(password, expectedPassword);
 }
